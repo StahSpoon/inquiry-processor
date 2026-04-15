@@ -7,8 +7,8 @@ router.get('/:key', async (req, res) => {
   const shared = req.query.shared === 'true' ? 1 : 0
   const userId = shared ? null : req.user.id
   const result = await db.execute({
-    sql: 'SELECT value FROM storage WHERE key = ? AND shared = ? AND COALESCE(user_id, 0) = COALESCE(?, 0)',
-    args: [req.params.key, shared, userId]
+    sql: 'SELECT value FROM storage WHERE key = ? AND shared = ? AND (user_id = ? OR (user_id IS NULL AND ? IS NULL))',
+    args: [req.params.key, shared, userId, userId]
   })
   if (!result.rows[0]) return res.status(404).json({ value: null })
   res.json({ key: req.params.key, value: result.rows[0].value, shared: !!shared })
@@ -19,11 +19,25 @@ router.put('/:key', async (req, res) => {
   if (value === undefined) return res.status(400).json({ error: 'Missing value' })
   const isShared = shared ? 1 : 0
   const userId = isShared ? null : req.user.id
-  await db.execute({
-    sql: `INSERT INTO storage (key, value, shared, user_id, updated) VALUES (?, ?, ?, ?, datetime('now'))
-          ON CONFLICT(key, shared, COALESCE(user_id, 0)) DO UPDATE SET value = excluded.value, updated = excluded.updated`,
-    args: [req.params.key, value, isShared, userId]
+
+  // Check if exists first, then insert or update
+  const existing = await db.execute({
+    sql: 'SELECT id FROM storage WHERE key = ? AND shared = ? AND (user_id = ? OR (user_id IS NULL AND ? IS NULL))',
+    args: [req.params.key, isShared, userId, userId]
   })
+
+  if (existing.rows.length > 0) {
+    await db.execute({
+      sql: "UPDATE storage SET value = ?, updated = datetime('now') WHERE id = ?",
+      args: [value, existing.rows[0].id]
+    })
+  } else {
+    await db.execute({
+      sql: 'INSERT INTO storage (key, value, shared, user_id) VALUES (?, ?, ?, ?)',
+      args: [req.params.key, value, isShared, userId]
+    })
+  }
+
   res.json({ key: req.params.key, value, shared: !!shared })
 })
 
@@ -31,8 +45,8 @@ router.delete('/:key', async (req, res) => {
   const shared = req.query.shared === 'true' ? 1 : 0
   const userId = shared ? null : req.user.id
   await db.execute({
-    sql: 'DELETE FROM storage WHERE key = ? AND shared = ? AND COALESCE(user_id, 0) = COALESCE(?, 0)',
-    args: [req.params.key, shared, userId]
+    sql: 'DELETE FROM storage WHERE key = ? AND shared = ? AND (user_id = ? OR (user_id IS NULL AND ? IS NULL))',
+    args: [req.params.key, shared, userId, userId]
   })
   res.json({ deleted: true })
 })
@@ -42,8 +56,8 @@ router.get('/', async (req, res) => {
   const isShared = shared === 'true' ? 1 : 0
   const userId = isShared ? null : req.user.id
   const result = await db.execute({
-    sql: 'SELECT key FROM storage WHERE key LIKE ? AND shared = ? AND COALESCE(user_id, 0) = COALESCE(?, 0)',
-    args: [`${prefix}%`, isShared, userId]
+    sql: 'SELECT key FROM storage WHERE key LIKE ? AND shared = ? AND (user_id = ? OR (user_id IS NULL AND ? IS NULL))',
+    args: [`${prefix}%`, isShared, userId, userId]
   })
   res.json({ keys: result.rows.map(r => r.key), shared: !!isShared })
 })

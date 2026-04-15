@@ -1,7 +1,3 @@
-/**
- * Turso database client (libSQL over HTTP — works on any host, no native bindings)
- * Docs: https://docs.turso.tech/sdk/ts/reference
- */
 import { createClient } from '@libsql/client'
 import crypto from 'crypto'
 
@@ -13,9 +9,9 @@ export const db = createClient({
   authToken: process.env.TURSO_TOKEN,
 })
 
-// ── Schema (idempotent) ───────────────────────────────────────────────────────
 export async function initDb() {
-  await db.executeMultiple(`
+  // Create tables one at a time (executeMultiple has issues with some Turso versions)
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS users (
       id        INTEGER PRIMARY KEY AUTOINCREMENT,
       username  TEXT UNIQUE NOT NULL,
@@ -23,17 +19,26 @@ export async function initDb() {
       name      TEXT NOT NULL,
       role      TEXT NOT NULL DEFAULT 'staff',
       created   TEXT DEFAULT (datetime('now'))
-    );
+    )
+  `)
 
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS storage (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
       key       TEXT NOT NULL,
       value     TEXT NOT NULL,
       shared    INTEGER NOT NULL DEFAULT 0,
       user_id   INTEGER,
-      updated   TEXT DEFAULT (datetime('now')),
-      PRIMARY KEY (key, shared, COALESCE(user_id, 0))
-    );
+      updated   TEXT DEFAULT (datetime('now'))
+    )
+  `)
 
+  await db.execute(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_storage_key
+    ON storage (key, shared, user_id)
+  `)
+
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS messages (
       id        INTEGER PRIMARY KEY AUTOINCREMENT,
       channel   TEXT NOT NULL,
@@ -43,18 +48,24 @@ export async function initDb() {
       text      TEXT NOT NULL,
       raw       TEXT,
       sent_at   TEXT DEFAULT (datetime('now'))
-    );
+    )
   `)
 
-  // Seed admin
-  const existing = await db.execute({ sql: 'SELECT id FROM users WHERE username = ?', args: ['admin'] })
+  // Seed admin user if not exists
+  const existing = await db.execute({
+    sql: 'SELECT id FROM users WHERE username = ?',
+    args: ['admin']
+  })
+
   if (existing.rows.length === 0) {
-    const hash = crypto.createHash('sha256').update(process.env.ADMIN_PASSWORD || 'admin123').digest('hex')
+    const hash = crypto.createHash('sha256')
+      .update(process.env.ADMIN_PASSWORD || 'admin123')
+      .digest('hex')
     await db.execute({
       sql: 'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
       args: ['admin', hash, 'Admin', 'admin']
     })
-    console.log('✓ Admin seeded — change password via app settings')
+    console.log('✓ Admin user seeded')
   }
 
   console.log('✓ Turso DB ready')
