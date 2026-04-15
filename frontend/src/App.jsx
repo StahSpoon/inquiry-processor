@@ -18,11 +18,11 @@ const SQ=["pending","awaiting","ordered","krakow","transit","ready"];
 const CONDITIONS=["Új","Kiváló","Jó","Közepes","Alkatrésznek"];
 const COND_C={Új:C.green,Kiváló:"#65a30d",Jó:C.blue,Közepes:C.amber,Alkatrésznek:C.red};
 const CHANNELS={
-  wa_pl:{label:"WhatsApp", country:"PL",color:"#22c55e",lang:"PL"},
-  vb_pl:{label:"Viber",    country:"PL",color:"#7c3aed",lang:"PL"},
-  wa_hu:{label:"WhatsApp", country:"HU",color:"#22c55e",lang:"HU"},
-  vb_hu:{label:"Viber",    country:"HU",color:"#7c3aed",lang:"HU"},
   fb_hu:{label:"Messenger",country:"HU",color:"#3b82f6",lang:"HU"},
+  wa_hu:{label:"WhatsApp", country:"HU",color:"#22c55e",lang:"HU"},
+  wa_pl:{label:"WhatsApp", country:"PL",color:"#22c55e",lang:"PL"},
+  vb_hu:{label:"Viber",    country:"HU",color:"#7c3aed",lang:"HU"},
+  vb_pl:{label:"Viber",    country:"PL",color:"#7c3aed",lang:"PL"},
 };
 const CURRENCIES=[
   {code:"HUF",name:"Magyarország",                                     countries:["HU"],          accent:C.green,  decimals:0, home:true},
@@ -418,14 +418,26 @@ function AiDashboard({orders}){
 }
 
 function Inbox({onCreateOrder,userName,users=[]}){
-  const[convos,setConvos]=useState([]);const[active,setActive]=useState(null);const[reply,setReply]=useState("");const[aiSugg,setAiSugg]=useState(null);const[aiLoad,setAiLoad]=useState(false);const[chFilter,setChFilter]=useState("all");const[stFilter,setStFilter]=useState("all");const[search,setSearch]=useState("");const[ready,setReady]=useState(false);const[showConnect,setShowConnect]=useState(false);const[newConvo,setNewConvo]=useState(false);const[nc,setNc]=useState({contact:"",channel:"wa_hu",phone:""});
+  const[convos,setConvos]=useState([]);
+  const[active,setActive]=useState(null);
+  const[reply,setReply]=useState("");
+  const[aiLoad,setAiLoad]=useState(false);
+  const[aiSugg,setAiSugg]=useState(null);
+  const[ready,setReady]=useState(false);
+  const[search,setSearch]=useState("");
+  const[stFilter,setStFilter]=useState("all");
+  const[newConvo,setNewConvo]=useState(false);
+  const[nc,setNc]=useState({contact:"",channel:"fb_hu",phone:""});
   const endRef=useRef();
-  useEffect(()=>{db.get("inbox_convos",true).then(d=>{setConvos(d||SAMPLE_CONVOS);setReady(true);});}, []);
+
+  useEffect(()=>{db.get("inbox_convos",true).then(d=>{setConvos(d||[]);setReady(true);});}, []);
   useEffect(()=>{if(ready)db.set("inbox_convos",convos,true);},[convos,ready]);
   useEffect(()=>{if(endRef.current)endRef.current.scrollIntoView({behavior:"smooth"});},[active,convos.map(c=>c.messages?.length).join("")]);
+
+  // SSE live messages
   useEffect(()=>{
     const API=window.__getApiBase?.()||"";
-    const es=new EventSource(`${API}/webhook/events`);
+    const es=new EventSource(`${API}/webhook/events`,{withCredentials:false});
     es.onmessage=(e)=>{
       try{
         const{type,msg}=JSON.parse(e.data);
@@ -441,9 +453,21 @@ function Inbox({onCreateOrder,userName,users=[]}){
     es.onerror=()=>es.close();
     return()=>es.close();
   },[]);
-  const ac=convos.find(c=>c.id===active);const ch=ac?CHANNELS[ac.channel]:null;
-  const filtered=convos.filter(c=>{if(chFilter!=="all"&&c.channel!==chFilter)return false;if(stFilter!=="all"&&c.status!==stFilter)return false;if(search&&!c.contact.toLowerCase().includes(search.toLowerCase()))return false;return true;}).sort((a,b)=>b.unread-a.unread);
+
+  const ac=convos.find(c=>c.id===active);
+  const ch=ac?CHANNELS[ac.channel]:null;
+
+  const filtered=convos.filter(c=>{
+    if(stFilter!=="all"&&c.status!==stFilter)return false;
+    if(!search)return true;
+    const q=search.toLowerCase();
+    return c.contact.toLowerCase().includes(q)||c.messages.some(m=>m.text.toLowerCase().includes(q));
+  });
+
   const openConvo=(id)=>{setActive(id);setAiSugg(null);setReply("");setConvos(p=>p.map(c=>c.id===id?{...c,unread:0}:c));};
+  const setStatus=(id,s)=>setConvos(p=>p.map(c=>c.id===id?{...c,status:s}:c));
+  const totalUnread=convos.reduce((a,c)=>a+(c.unread||0),0);
+
   const sendMsg=async()=>{
     if(!reply.trim()||!active)return;
     const text=reply.trim();
@@ -451,54 +475,217 @@ function Inbox({onCreateOrder,userName,users=[]}){
     setConvos(p=>p.map(c=>c.id===active?{...c,messages:[...c.messages,msg],lastTime:msg.time}:c));
     setReply("");setAiSugg(null);
     const API=window.__getApiBase?.()||"";
-    const endpointMap={wa_pl:`${API}/webhook/whatsapp/send`,wa_hu:`${API}/webhook/whatsapp/send`,vb_pl:`${API}/webhook/viber/send`,vb_hu:`${API}/webhook/viber/send`,fb_hu:`${API}/webhook/messenger/send`};
+    const endpointMap={wa_pl:`${API}/webhook/vonage/send/whatsapp`,wa_hu:`${API}/webhook/vonage/send/whatsapp`,vb_pl:`${API}/webhook/vonage/send/viber`,vb_hu:`${API}/webhook/vonage/send/viber`,fb_hu:`${API}/webhook/vonage/send/messenger`};
     const endpoint=endpointMap[ac?.channel];
     const chLang=ac?CHANNELS[ac.channel]?.lang:null;
-    if(endpoint&&ac?.phone&&ac.phone!=="Facebook"){
+    if(endpoint&&ac?.phone){
       fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${localStorage.getItem("am_token")||""}`},body:JSON.stringify({to:ac.phone,text,lang:chLang})}).catch(()=>{});
     }
   };
-  const getAI=async()=>{if(!ac)return;setAiLoad(true);setAiSugg(null);const chInfo=CHANNELS[ac.channel];const lang=chInfo.lang==="PL"?"lengyelül (Polish)":"magyarul (Hungarian)";const hist=ac.messages.map(m=>`${m.from==="in"?ac.contact:"Mi"}: ${m.text}`).join("\n");const sysPrompt=await db.get("ai_system_prompt",true)||DEFAULT_AI_PROMPT;try{const text=await ai([{role:"user",content:`${sysPrompt}\n\nCsatorna: ${chInfo.label} (${chInfo.country}) — válaszolj ${lang}\n\nBeszélgetés:\n${hist}\n\nGenerálj professzionális választ ${lang}. Ellenőrizd, hogy alkatrész-érdeklődésről van-e szó.\n\nCsak JSON: {"reply":"...","isInquiry":true/false,"inquiry":{"partName":"...","car":"...","quantity":1} vagy null}`}]);const d=JSON.parse(text.split(String.fromCharCode(96,96,96)+"json").join("").split(String.fromCharCode(96,96,96)).join("").trim());setAiSugg(d);}catch{setAiSugg({reply:"Hiba. Próbálja újra.",isInquiry:false,inquiry:null});}setAiLoad(false);};
-  const createOrder=()=>{if(!aiSugg?.inquiry||!ac)return;onCreateOrder({customer:ac.contact,platform:ch?.label||"Inbox",part:aiSugg.inquiry.partName,car:aiSugg.inquiry.car||"",qty:aiSugg.inquiry.quantity||1,allegroLink:"",status:"pending",date:new Date().toISOString().split("T")[0],note:`Inbox: ${ac.channel}`,createdBy:userName});};
-  const setStatus=(id,s)=>setConvos(p=>p.map(c=>c.id===id?{...c,status:s}:c));
-  const setAssign=(id,a)=>setConvos(p=>p.map(c=>c.id===id?{...c,assigned:a}:c));
-  const addNewConvo=()=>{if(!nc.contact)return;const id=Date.now();setConvos(p=>[{id,contact:nc.contact,channel:nc.channel,phone:nc.phone,status:"open",unread:0,lastTime:"Most",assigned:null,messages:[]},...p]);setActive(id);setNewConvo(false);setNc({contact:"",channel:"wa_hu",phone:""});};
-  const totalUnread=convos.reduce((a,c)=>a+(c.unread||0),0);
+
+  const getAI=async()=>{
+    if(!ac)return;setAiLoad(true);setAiSugg(null);
+    const chInfo=CHANNELS[ac.channel];
+    const lang=chInfo?.lang==="PL"?"lengyel":"magyar";
+    const history=ac.messages.slice(-6).map(m=>(m.from==="in"?"Ügyfél: ":"Mi: ")+m.text).join("\n");
+    try{
+      const txt=await ai([{role:"user",content:`Te egy autóalkatrész-kereskedés AI asszisztense vagy. Az alábbi ${lang} nyelvű beszélgetés alapján adj rövid választ ${lang} nyelven és azonosítsd az érdeklődést ha van.\n\nBeszélgetés:\n${history}\n\nVálaszolj JSON-ban: {"reply":"javasolt válasz ${lang} nyelven","inquiry":{"partName":"alkatrész neve","car":"jármű vagy null","quantity":1}}`}]);
+      const d=JSON.parse(txt.replace(/```json|```/g,"").trim());
+      setAiSugg(d);
+    }catch{setAiSugg({reply:"Nem sikerült az AI elemzés.",inquiry:null});}
+    setAiLoad(false);
+  };
+
+  const createOrder=()=>{
+    if(!aiSugg?.inquiry||!ac)return;
+    onCreateOrder({customer:ac.contact,platform:ch?.label||"Inbox",car:aiSugg.inquiry.car||"",parts:[{name:aiSugg.inquiry.partName,qty:aiSugg.inquiry.quantity||1,allegroLink:""}],status:"pending",date:new Date().toISOString().split("T")[0],note:"",createdBy:userName});
+  };
+
+  const addNewConvo=()=>{
+    if(!nc.contact)return;
+    const id=Date.now();
+    setConvos(p=>[{id,contact:nc.contact,channel:nc.channel,phone:nc.phone,status:"open",unread:0,lastTime:"",assigned:null,messages:[]},...p]);
+    setActive(id);setNewConvo(false);setNc({contact:"",channel:"fb_hu",phone:""});
+  };
+
+  // Status colors for sidebar
+  const statusDot={open:C.green,pending:C.amber,solved:C.mu};
+
   return(
     <div style={{display:"flex",height:"100vh",overflow:"hidden"}}>
+
+      {/* ── LEFT SIDEBAR ── */}
       <div style={{width:300,background:C.s1,borderRight:`1px solid ${C.bd}`,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
-        <div style={{padding:"16px 16px 12px",borderBottom:`1px solid ${C.bd}`}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}><div style={{fontSize:14,fontWeight:800,color:C.tx}}>Beérkező {totalUnread>0&&<span style={{background:C.acc,color:"#fff",borderRadius:9,padding:"1px 6px",fontSize:9,fontWeight:800,marginLeft:6}}>{totalUnread}</span>}</div><div style={{display:"flex",gap:5}}><Btn v="subtle" sz="sm" onClick={()=>setShowConnect(true)} style={{fontSize:10,padding:"4px 8px"}}>⚡ Csatorna</Btn><Btn v="primary" sz="sm" onClick={()=>setNewConvo(true)} style={{padding:"4px 10px",fontSize:12}}>+</Btn></div></div>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keresés..." style={{...inp,padding:"7px 10px",fontSize:12,marginBottom:8}}/>
-          <div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>{[["all","Összes"],["open","Nyitott"],["pending","Függő"],["solved","Megoldott"]].map(([v,l])=>(<button key={v} onClick={()=>setStFilter(v)} style={{background:stFilter===v?C.acc+"20":"transparent",color:stFilter===v?C.acc:C.mu,border:`1px solid ${stFilter===v?C.acc+"40":C.bd}`,borderRadius:5,padding:"3px 8px",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:F}}>{l}</button>))}</div>
-          <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:2}}><button onClick={()=>setChFilter("all")} style={{background:chFilter==="all"?C.s3:"transparent",color:chFilter==="all"?C.tx:C.mu,border:`1px solid ${C.bd}`,borderRadius:5,padding:"3px 8px",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:F,whiteSpace:"nowrap",flexShrink:0}}>Összes</button>{Object.entries(CHANNELS).map(([k,ch])=>(<button key={k} onClick={()=>setChFilter(chFilter===k?"all":k)} style={{background:chFilter===k?ch.color+"20":"transparent",color:chFilter===k?ch.color:C.mu,border:`1px solid ${chFilter===k?ch.color+"40":C.bd}`,borderRadius:5,padding:"3px 7px",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:F,whiteSpace:"nowrap",flexShrink:0}}><Flag code={ch.country} sm/> {ch.label==="WhatsApp"?"WA":ch.label==="Viber"?"Vb":"FB"}</button>))}</div>
+
+        {/* Header */}
+        <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.bd}`,flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:14,fontWeight:800,color:C.tx}}>Beérkező</span>
+              {totalUnread>0&&<span style={{background:C.acc,color:"#fff",borderRadius:10,padding:"1px 7px",fontSize:10,fontWeight:700}}>{totalUnread}</span>}
+            </div>
+            <Btn v="subtle" sz="sm" onClick={()=>setNewConvo(true)}>+ Új</Btn>
+          </div>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keresés..." style={{...inp,padding:"7px 10px",fontSize:11,width:"100%",marginBottom:8}}/>
+          <div style={{display:"flex",gap:4}}>
+            {[["all","Mind"],["open","Nyitott"],["pending","Függő"],["solved","Megoldott"]].map(([v,l])=>(
+              <button key={v} onClick={()=>setStFilter(v)} style={{flex:1,padding:"4px 0",fontSize:10,fontWeight:600,borderRadius:5,border:"none",cursor:"pointer",background:stFilter===v?C.acc:C.s2,color:stFilter===v?"#fff":C.mu,transition:"all 0.15s"}}>{l}</button>
+            ))}
+          </div>
         </div>
+
+        {/* Conversation list */}
         <div style={{flex:1,overflowY:"auto"}}>
-          {filtered.length===0&&<div style={{padding:24,textAlign:"center",color:C.mu,fontSize:12}}>Nincs találat.</div>}
-          {filtered.map(c=>{const chInfo=CHANNELS[c.channel];const lastMsg=c.messages[c.messages.length-1];const isA=active===c.id;return(<div key={c.id} onClick={()=>openConvo(c.id)} style={{padding:"12px 14px",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",background:isA?C.acc+"10":c.unread>0?C.s2:"transparent",borderLeft:isA?`3px solid ${C.acc}`:"3px solid transparent",transition:"all 0.1s"}}>
-            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:3}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:28,height:28,background:chInfo?.color+"20",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:chInfo?.color,flexShrink:0}}>{c.contact[0]}</div><div><div style={{fontSize:12,fontWeight:c.unread>0?800:600,color:C.tx}}>{c.contact}</div><ChBadge ch={c.channel}/></div></div><div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,flexShrink:0}}><div style={{fontSize:10,color:C.mu}}>{c.lastTime}</div>{c.unread>0&&<span style={{background:C.acc,color:"#fff",borderRadius:"50%",width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800}}>{c.unread}</span>}</div></div>
-            {lastMsg&&<div style={{fontSize:11,color:C.mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:4,paddingLeft:34}}>{lastMsg.from==="out"?"✓ ":""}{lastMsg.text}</div>}
-            <div style={{paddingLeft:34,marginTop:3}}><span style={{fontSize:9,fontWeight:600,color:c.status==="solved"?C.green:c.status==="pending"?C.amber:C.mu,textTransform:"uppercase",letterSpacing:0.5}}>{c.status==="solved"?"● Megoldott":c.status==="pending"?"● Függőben":"● Nyitott"}</span></div>
-          </div>);})}
+          {filtered.length===0&&(
+            <div style={{padding:"40px 20px",textAlign:"center"}}>
+              <div style={{fontSize:28,marginBottom:8}}>◉</div>
+              <div style={{fontSize:12,color:C.mu}}>Nincs üzenet</div>
+              <div style={{fontSize:11,color:C.mu,marginTop:4}}>Üzenetek itt jelennek meg</div>
+            </div>
+          )}
+          {filtered.map(c=>{
+            const chInfo=CHANNELS[c.channel];
+            const lastMsg=c.messages[c.messages.length-1];
+            const isA=active===c.id;
+            return(
+              <div key={c.id} onClick={()=>openConvo(c.id)} style={{padding:"11px 14px",cursor:"pointer",borderBottom:`1px solid ${C.bd}`,background:isA?C.acc+"10":"transparent",borderLeft:isA?`2px solid ${C.acc}`:"2px solid transparent",transition:"all 0.1s"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7,minWidth:0}}>
+                    {/* Channel color dot */}
+                    <span style={{width:8,height:8,borderRadius:"50%",background:chInfo?.color||C.mu,flexShrink:0}}/>
+                    <span style={{fontSize:13,fontWeight:c.unread>0?700:500,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.contact}</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+                    {c.unread>0&&<span style={{background:C.acc,color:"#fff",borderRadius:8,padding:"1px 6px",fontSize:9,fontWeight:700}}>{c.unread}</span>}
+                    <span style={{fontSize:9,color:C.mu}}>{c.lastTime}</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingLeft:15}}>
+                  <span style={{fontSize:11,color:C.mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{lastMsg?lastMsg.text:"Nincs üzenet"}</span>
+                  <span style={{fontSize:9,fontWeight:600,color:statusDot[c.status]||C.mu,marginLeft:6,flexShrink:0,textTransform:"uppercase"}}>{c.status==="open"?"":"● "}{c.status==="solved"?"kész":c.status==="pending"?"függő":""}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
+
+      {/* ── MAIN CHAT AREA ── */}
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg}}>
-        {!ac?(<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:C.mu}}><div style={{fontSize:32,marginBottom:12}}>💬</div><div style={{fontSize:14,fontWeight:600,color:C.mu}}>Válasszon egy beszélgetést</div><Btn v="outline" sz="sm" onClick={()=>setNewConvo(true)} style={{marginTop:12}}>+ Új beszélgetés</Btn></div>):(
+        {!ac?(
+          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:C.mu,gap:12}}>
+            <div style={{fontSize:36,opacity:0.3}}>◉</div>
+            <div style={{fontSize:13,fontWeight:600,color:C.t2}}>Válassz egy beszélgetést</div>
+            <div style={{fontSize:11,color:C.mu}}>Bal oldalt kattints egy üzenetre</div>
+          </div>
+        ):(
           <>
-            <div style={{padding:"12px 20px",borderBottom:`1px solid ${C.bd}`,background:C.s1,display:"flex",alignItems:"center",gap:12,flexShrink:0}}><div style={{width:36,height:36,background:ch?.color+"20",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:ch?.color,flexShrink:0}}>{ac.contact[0]}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:800,color:C.tx}}>{ac.contact}</div><div style={{display:"flex",alignItems:"center",gap:8,marginTop:2}}><ChBadge ch={ac.channel}/><span style={{fontSize:11,color:C.mu}}>{ac.phone}</span></div></div><select value={ac.assigned||""} onChange={e=>setAssign(ac.id,e.target.value||null)} style={{...inp,width:"auto",fontSize:11,padding:"5px 8px",color:ac.assigned?C.tx:C.mu}}><option value="">Hozzárendelés...</option>{(users||[]).map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select><select value={ac.status} onChange={e=>setStatus(ac.id,e.target.value)} style={{...inp,width:"auto",fontSize:11,padding:"5px 8px"}}><option value="open">● Nyitott</option><option value="pending">● Függőben</option><option value="solved">● Megoldott</option></select></div>
-            <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>{ac.messages.map(m=>{const isOut=m.from==="out";return(<div key={m.id} style={{display:"flex",justifyContent:isOut?"flex-end":"flex-start"}}><div style={{maxWidth:"72%"}}><div style={{background:isOut?C.acc+"25":C.s2,border:`1px solid ${isOut?C.acc+"30":C.bd}`,borderRadius:isOut?"12px 12px 4px 12px":"12px 12px 12px 4px",padding:"9px 12px",fontSize:13,color:C.tx,lineHeight:1.55}}>{m.text}</div><div style={{fontSize:10,color:C.mu,marginTop:3,textAlign:isOut?"right":"left"}}>{m.time}{isOut&&m.sender?` · ${m.sender}`:""}</div></div></div>);})} <div ref={endRef}/></div>
-            {(aiSugg||aiLoad)&&(<div style={{margin:"0 20px",padding:14,background:C.acc+"08",border:`1px solid ${C.acc}25`,borderRadius:8,flexShrink:0}}>{aiLoad?(<div style={{display:"flex",alignItems:"center",gap:8,color:C.mu,fontSize:12}}>⟳ AI generálja a választ...</div>):(<><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><div style={{fontSize:10,fontWeight:700,color:C.acc,letterSpacing:1}}>✦ AI JAVASLAT</div><div style={{display:"flex",gap:6}}><Btn v="subtle" sz="sm" onClick={()=>{setReply(aiSugg.reply);setAiSugg(null);}} style={{fontSize:11}}>Használom</Btn><Btn v="ghost" sz="sm" onClick={()=>setAiSugg(null)} style={{fontSize:11}}>✕</Btn></div></div><div style={{fontSize:13,color:C.t2,lineHeight:1.6,marginBottom:aiSugg.isInquiry?10:0}}>{aiSugg.reply}</div>{aiSugg.isInquiry&&aiSugg.inquiry&&(<div style={{borderTop:`1px solid ${C.acc}20`,paddingTop:8,display:"flex",alignItems:"center",gap:10}}><div style={{flex:1,fontSize:11,color:C.amber}}>🔍 {aiSugg.inquiry.partName}{aiSugg.inquiry.car?` · ${aiSugg.inquiry.car}`:""}</div><Btn v="amber" sz="sm" onClick={createOrder}>+ Rendelés</Btn></div>)}</>)}</div>)}
-            <div style={{padding:"12px 20px",borderTop:`1px solid ${C.bd}`,background:C.s1,flexShrink:0}}><div style={{display:"flex",gap:8,marginBottom:8}}><Btn v="subtle" sz="sm" onClick={getAI} disabled={aiLoad} style={{fontSize:11}}>✦ AI Válasz</Btn><div style={{flex:1}}/><select onChange={e=>{if(e.target.value){const txt=e.target.value;const isPlCh=ac&&CHANNELS[ac.channel]?.lang==="PL";setReply(isPlCh?`[${makeId(ac.contact,"")}] ${txt}`:txt);e.target.value="";}}} style={{...inp,width:"auto",fontSize:11,padding:"4px 8px"}} defaultValue=""><option value="">Sablon...</option><optgroup label="🇵🇱 Lengyel">{PL_TPL.map(t=><option key={t.id} value={t.text}>{t.title}</option>)}</optgroup><optgroup label="🇭🇺 Magyar">{HU_TPL.map(t=><option key={t.id} value={t.text}>{t.title}</option>)}</optgroup></select></div><div style={{display:"flex",gap:8,alignItems:"flex-end"}}><textarea value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&e.ctrlKey)sendMsg();}} placeholder={ch?`Üzenet ${ch.lang==="PL"?"lengyelül":"magyarul"}... (Ctrl+Enter)`:"Válasszon beszélgetést..."} rows={3} style={{...inp,resize:"none",flex:1,lineHeight:1.5}}/><button onClick={sendMsg} disabled={!reply.trim()} style={{flexShrink:0,width:40,height:40,borderRadius:"50%",background:reply.trim()?C.acc:"#1a1a1a",border:"none",cursor:reply.trim()?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",transition:"background 0.15s",marginBottom:2}}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Chat header */}
+            <div style={{padding:"12px 20px",borderBottom:`1px solid ${C.bd}`,background:C.s1,display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+              <div style={{width:36,height:36,borderRadius:"50%",background:ch?.color+"20"||C.s2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:ch?.color||C.mu,flexShrink:0}}>
+                {ac.contact.charAt(0).toUpperCase()}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:14,fontWeight:700,color:C.tx}}>{ac.contact}</div>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
+                  <ChBadge ch={ac.channel}/>
+                  {ac.phone&&<span style={{fontSize:10,color:C.mu,fontFamily:"monospace"}}>{ac.phone}</span>}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                {[["open","Nyitott",C.green],["pending","Függő",C.amber],["solved","Megoldott",C.mu]].map(([v,l,col])=>(
+                  <button key={v} onClick={()=>setStatus(ac.id,v)} style={{padding:"4px 10px",fontSize:10,fontWeight:600,borderRadius:5,border:`1px solid ${ac.status===v?col:C.bd}`,background:ac.status===v?col+"15":"transparent",color:ac.status===v?col:C.mu,cursor:"pointer"}}>{l}</button>
+                ))}
+                <Btn v="success" sz="sm" onClick={createOrder} disabled={!aiSugg?.inquiry}>✓ Rendelés</Btn>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
+              {ac.messages.length===0&&(
+                <div style={{textAlign:"center",color:C.mu,fontSize:12,marginTop:40}}>Még nincs üzenet ebben a beszélgetésben.</div>
+              )}
+              {ac.messages.map(m=>{
+                const out=m.from==="out";
+                return(
+                  <div key={m.id} style={{display:"flex",justifyContent:out?"flex-end":"flex-start"}}>
+                    <div style={{maxWidth:"72%",padding:"9px 13px",borderRadius:out?"12px 12px 2px 12px":"12px 12px 12px 2px",background:out?C.acc:C.s2,color:out?"#fff":C.tx,fontSize:13,lineHeight:1.5}}>
+                      {m.text}
+                      <div style={{fontSize:9,color:out?"rgba(255,255,255,0.6)":C.mu,marginTop:4,textAlign:"right"}}>{m.time}{m.sender&&out?` · ${m.sender}`:""}</div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={endRef}/>
+            </div>
+
+            {/* AI suggestion */}
+            {(aiSugg||aiLoad)&&(
+              <div style={{margin:"0 20px 8px",padding:"10px 14px",background:C.acc+"08",border:`1px solid ${C.acc}25`,borderRadius:8,flexShrink:0}}>
+                {aiLoad?(
+                  <div style={{fontSize:12,color:C.acc,display:"flex",alignItems:"center",gap:6}}>⟳ AI elemez...</div>
+                ):(
+                  <>
+                    <div style={{fontSize:10,color:C.acc,fontWeight:700,letterSpacing:0.8,marginBottom:6}}>✦ AI JAVASLAT</div>
+                    {aiSugg.inquiry&&<div style={{fontSize:11,color:C.mu,marginBottom:6}}>Érdeklődés: <strong style={{color:C.t2}}>{aiSugg.inquiry.partName}</strong>{aiSugg.inquiry.car?` · ${aiSugg.inquiry.car}`:""}</div>}
+                    <div style={{fontSize:12,color:C.t2,background:C.s2,borderRadius:6,padding:"8px 10px",marginBottom:6}}>{aiSugg.reply}</div>
+                    <div style={{display:"flex",gap:6}}>
+                      <Btn v="subtle" sz="sm" onClick={()=>setReply(aiSugg.reply)}>↩ Használ</Btn>
+                      {aiSugg.inquiry&&<Btn v="success" sz="sm" onClick={createOrder}>✓ Rendelés</Btn>}
+                      <Btn v="ghost" sz="sm" onClick={()=>setAiSugg(null)}>✕</Btn>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Input bar */}
+            <div style={{padding:"10px 16px",borderTop:`1px solid ${C.bd}`,background:C.s1,flexShrink:0}}>
+              <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+                <Btn v="subtle" sz="sm" onClick={getAI} disabled={aiLoad} style={{fontSize:11}}>✦ AI</Btn>
+                <div style={{flex:1}}/>
+                <select onChange={e=>{if(e.target.value){const isHU=!CHANNELS[ac.channel]?.lang||CHANNELS[ac.channel].lang==="HU";setReply(e.target.value);e.target.value=""}}} style={{...inp,width:"auto",fontSize:11,padding:"4px 8px"}} defaultValue="">
+                  <option value="">Sablon...</option>
+                  <option value="Köszönjük érdeklődését! Miben segíthetünk?">👋 Üdvözlés</option>
+                  <option value="Az alkatrész készleten van, hamarosan visszajelzünk az árral.">✓ Készleten</option>
+                  <option value="Sajnos ez az alkatrész jelenleg nem elérhető. Megpróbálunk alternatívát keresni.">✗ Nincs készleten</option>
+                  <option value="A rendelés megérkezett raktárunkba, hamarosan szállítjuk.">📦 Megérkezett</option>
+                  <option value="Az alkatrész átvehető! Mikor tud jönni?">🎉 Átvehető</option>
+                </select>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+                <textarea value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&e.ctrlKey)sendMsg();}} placeholder={ch?`Üzenet ${ch.lang==="PL"?"lengyelül":"magyarul"}... (Ctrl+Enter)`:"Válasszon beszélgetést..."} rows={2} style={{...inp,resize:"none",flex:1,lineHeight:1.5,fontSize:13}}/>
+                <button onClick={sendMsg} disabled={!reply.trim()} style={{flexShrink:0,width:38,height:38,borderRadius:"50%",background:reply.trim()?C.acc:"#1a1a1a",border:"none",cursor:reply.trim()?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",transition:"background 0.15s",marginBottom:1}}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                     <path d="M22 2L11 13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                </button></div></div>
+                </button>
+              </div>
+            </div>
           </>
         )}
       </div>
-      {newConvo&&(<Modal onClose={()=>setNewConvo(false)} width={420}><div style={{padding:"18px 22px",borderBottom:`1px solid ${C.bd}`,fontSize:14,fontWeight:700,color:C.tx}}>Új beszélgetés</div><div style={{padding:22,display:"flex",flexDirection:"column",gap:12}}><Field label="Ügyfél neve" value={nc.contact} onChange={v=>setNc(x=>({...x,contact:v}))} placeholder="pl. Kovács Péter"/><Field label="Telefonszám" value={nc.phone} onChange={v=>setNc(x=>({...x,phone:v}))} placeholder="+36 30 ..."/><Field label="Csatorna"><select value={nc.channel} onChange={e=>setNc(x=>({...x,channel:e.target.value}))} style={inp}>{Object.entries(CHANNELS).map(([k,c])=><option key={k} value={k}><Flag code={c.country} sm/> {c.label}</option>)}</select></Field><div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="outline" onClick={()=>setNewConvo(false)}>Mégse</Btn><Btn onClick={addNewConvo} disabled={!nc.contact}>Létrehozás</Btn></div></div></Modal>)}
-      {showConnect&&(<Modal onClose={()=>setShowConnect(false)} width={620}><div style={{padding:"18px 24px",borderBottom:`1px solid ${C.bd}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:14,fontWeight:800,color:C.tx}}>⚡ Csatornák összekapcsolása</div><Btn v="ghost" sz="sm" onClick={()=>setShowConnect(false)}>✕</Btn></div><div style={{padding:24,display:"flex",flexDirection:"column",gap:16}}>{[{ch:"🇵🇱 WhatsApp PL + 🇭🇺 WhatsApp HU",col:"#22c55e",steps:["developers.facebook.com → Alkalmazás létrehozása → Business","WhatsApp termék hozzáadása → Cloud API (ingyenes)","Minden telefonszámot külön kell regisztrálni","Webhook URL: https://szerver.com/webhook/whatsapp","Ingyenes 1000 beszélgetés/hó, felette €0.005/üzenet"]},{ch:"🇵🇱 Viber PL + 🇭🇺 Viber HU",col:"#7c3aed",steps:["partners.viber.com → Bot létrehozása","Minden számhoz külön bot token szükséges","node setup-viber.js futtatása telepítés után","Teljesen ingyenes, nincs üzenetlimit"]},{ch:"📘 Facebook Messenger HU",col:"#3b82f6",steps:["Facebook Business Oldal szükséges","developers.facebook.com → Messenger termék","Webhook: https://szerver.com/webhook/messenger","Page Access Token generálása — ingyenes"]}].map(({ch,col,steps})=>(<div key={ch} style={{background:C.s2,border:`1px solid ${C.bd}`,borderRadius:9,padding:16}}><div style={{fontSize:13,fontWeight:800,color:C.tx,marginBottom:10,display:"flex",alignItems:"center",gap:8}}><span style={{width:8,height:8,borderRadius:"50%",background:col,display:"inline-block"}}/>{ch}</div>{steps.map((s,i)=>(<div key={i} style={{display:"flex",gap:8,marginBottom:5}}><span style={{color:col,fontWeight:800,fontSize:11,flexShrink:0,minWidth:16}}>{i+1}.</span><span style={{fontSize:12,color:C.t2,lineHeight:1.5}}>{s}</span></div>))}</div>))}</div></Modal>)}
+
+      {/* ── NEW CONVERSATION MODAL ── */}
+      {newConvo&&(
+        <Modal onClose={()=>setNewConvo(false)} width={400}>
+          <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.bd}`,fontSize:14,fontWeight:700,color:C.tx}}>Új beszélgetés</div>
+          <div style={{padding:20,display:"flex",flexDirection:"column",gap:12}}>
+            <Field label="Ügyfél neve" value={nc.contact} onChange={v=>setNc(x=>({...x,contact:v}))} placeholder="pl. Kovács Péter"/>
+            <Field label="Csatorna">
+              <select value={nc.channel} onChange={e=>setNc(x=>({...x,channel:e.target.value}))} style={inp}>
+                {Object.entries(CHANNELS).map(([k,v])=><option key={k} value={k}>{v.label} ({v.country})</option>)}
+              </select>
+            </Field>
+            <Field label="Telefonszám / ID" value={nc.phone} onChange={v=>setNc(x=>({...x,phone:v}))} placeholder="pl. 36201234567"/>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <Btn v="outline" onClick={()=>setNewConvo(false)}>Mégse</Btn>
+              <Btn onClick={addNewConvo} disabled={!nc.contact}>Létrehozás</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
