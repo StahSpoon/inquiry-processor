@@ -47,23 +47,9 @@ const HU_TPL=[
   {id:4,title:"Átvehető",text:"Az alkatrésze megérkezett és átvehető! Kérjük, jelezze, mikor tud jönni."},
   {id:5,title:"Árajánlat küldése",text:"Kedves Ügyfelünk! Az alkatrész ára: [ÁR]. Szállítási idő kb. [IDŐ] nap. Kéri, hogy megrendeljük?"},
 ];
-const INIT_ORDERS=[
-  {id:1,customer:"Kovács Péter",zip:"2900",platform:"WhatsApp",car:"VW Golf VII 2015",parts:[{name:"Féktárcsa első tengely",qty:2,allegroLink:"https://allegro.pl"},{name:"Fékbetét első",qty:4,allegroLink:""}],status:"krakow",date:"2025-04-01",note:"",createdBy:"Admin"},
-  {id:2,customer:"Nagy Éva",zip:"2900",platform:"Messenger",car:"Opel Astra J 2012",parts:[{name:"Olajszűrő",qty:1,allegroLink:"https://allegro.pl"}],status:"awaiting",date:"2025-04-03",note:"",createdBy:"Admin"},
-  {id:3,customer:"Tóth Gábor",zip:"9021",platform:"Viber",car:"Ford Focus 2018",parts:[{name:"Lengőkar bal első",qty:1,allegroLink:""},{name:"Lökhárító első",qty:1,allegroLink:""},{name:"Sárvédő bal",qty:1,allegroLink:""}],status:"pending",date:"2025-04-04",note:"",createdBy:"Admin"},
-];
-const DEFAULT_USERS=[
-  {id:1,username:"admin",password:"admin123",name:"Admin",role:"admin"},
-  {id:2,username:"peter",password:"peter123",name:"Péter",role:"staff"},
-];
-const SAMPLE_CONVOS=[
-  {id:1,contact:"Marek Kowalski",channel:"wa_pl",phone:"+48 501 234 567",status:"open",unread:2,lastTime:"10:46",assigned:null,messages:[{id:1,from:"in",text:"Dzień dobry, szukam klocków hamulcowych do BMW E90 320d 2008. Macie na stanie?",time:"09:14"},{id:2,from:"out",text:"Dzień dobry! Sprawdzamy dostępność i odpiszemy wkrótce.",time:"09:20"},{id:3,from:"in",text:"Potrzebuję też tarcze hamulcowe przednie.",time:"10:45"},{id:4,from:"in",text:"Proszę o szybką odpowiedź.",time:"10:46"}]},
-  {id:2,contact:"Kovács András",channel:"wa_hu",phone:"+36 70 234 5678",status:"open",unread:1,lastTime:"09:00",assigned:null,messages:[{id:1,from:"in",text:"Jó napot! Van VW Golf 7 1.6 TDI-hez olajszűrőjük?",time:"08:30"},{id:2,from:"out",text:"Jó napot! Ellenőrizzük és visszajelzünk.",time:"08:45"},{id:3,from:"in",text:"Köszönöm, mikor tudnak visszajelezni?",time:"09:00"}]},
-  {id:3,contact:"Tóth Réka",channel:"fb_hu",phone:"Facebook",status:"open",unread:0,lastTime:"Tegnap",assigned:null,messages:[{id:1,from:"in",text:"Hello! Mennyibe kerül egy váltó Opel Astra H 1.9 CDTI-hez?",time:"Tegnap 14:20"},{id:2,from:"out",text:"Ellenőrizzük az árat és visszajelzünk.",time:"Tegnap 14:35"}]},
-  {id:4,contact:"Janusz Nowak",channel:"vb_pl",phone:"+48 600 111 222",status:"pending",unread:1,lastTime:"11:00",assigned:null,messages:[{id:1,from:"in",text:"Witam! Interesują mnie amortyzatory przednie do Audi A4 B8 2010.",time:"11:00"}]},
-  {id:5,contact:"Horváth Béla",channel:"vb_hu",phone:"+36 30 345 6789",status:"solved",unread:0,lastTime:"12:50",assigned:null,messages:[{id:1,from:"in",text:"Mikor érkezik meg az alkatrész?",time:"12:30"},{id:2,from:"out",text:"Krakkóban van, a következő szállítmánnyal érkezik.",time:"12:45"},{id:3,from:"in",text:"Köszönöm!",time:"12:50"}]},
-];
+const INIT_ORDERS=[]
 
+const SAMPLE_CONVOS=[]
 function makeId(name,zip){
   if(!name)return"—";
   const acc="ÁáÉéÍíÓóÖöŐőÚúÜüŰű",base="AaEeIiOoOoOoUuUuUu";
@@ -124,8 +110,19 @@ const PH=({children,sub})=>(<div style={{marginBottom:24}}><h2 style={{fontSize:
 
 function Login({onLogin}){
   const[u,setU]=useState("");const[p,setP]=useState("");const[err,setErr]=useState("");const[ld,setLd]=useState(false);
-  const go=async()=>{setLd(true);setErr("");let users=await db.get("team_users",true);if(!users){await db.set("team_users",DEFAULT_USERS,true);users=DEFAULT_USERS;}const found=users.find(x=>x.username===u&&x.password===p);if(found)onLogin(found);else{setErr("Hibás felhasználónév vagy jelszó.");setLd(false);}};
-  return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><div style={{width:360}}><div style={{textAlign:"center",marginBottom:40}}><div style={{fontSize:10,color:C.mu,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Alkatrész</div><div style={{fontSize:30,fontWeight:800,color:C.tx,letterSpacing:-1}}>Manager<span style={{color:C.acc}}>.</span></div><div style={{fontSize:12,color:C.mu,marginTop:6}}>PL → HU logisztikai platform</div></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:28}}><div style={{display:"flex",flexDirection:"column",gap:14}}><Field label="Felhasználónév" value={u} onChange={setU} placeholder="felhasználónév"/><div><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:5}}>Jelszó</div><input type="password" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&u&&p)go();}} placeholder="••••••••" style={inp}/></div>{err&&<div style={{color:C.acc,fontSize:12,fontWeight:500}}>{err}</div>}<Btn onClick={go} disabled={ld||!u||!p} full>{ld?"Bejelentkezés...":"Bejelentkezés →"}</Btn></div></div><div style={{textAlign:"center",marginTop:14,fontSize:11,color:C.mu}}>Demo: admin / admin123</div></div></div>);
+  const go=async()=>{
+    setLd(true);setErr("");
+    try{
+      const API=window.__getApiBase?.()||"";
+      const r=await fetch(`${API}/api/auth/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,password:p})});
+      const d=await r.json();
+      if(!r.ok) throw new Error(d.error||"Hiba");
+      localStorage.setItem("am_token",d.token);
+      if(window.__setAuthToken) window.__setAuthToken(d.token);
+      onLogin(d.user);
+    }catch(e){setErr(e.message||"Hibás felhasználónév vagy jelszó.");setLd(false);}
+  };
+  return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><div style={{width:360}}><div style={{textAlign:"center",marginBottom:40}}><div style={{fontSize:10,color:C.mu,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Alkatrész</div><div style={{fontSize:30,fontWeight:800,color:C.tx,letterSpacing:-1}}>Manager<span style={{color:C.acc}}>.</span></div><div style={{fontSize:12,color:C.mu,marginTop:6}}>PL → HU logisztikai platform</div></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:28}}><div style={{display:"flex",flexDirection:"column",gap:14}}><Field label="Felhasználónév" value={u} onChange={setU} placeholder="felhasználónév"/><div><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:5}}>Jelszó</div><input type="password" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&u&&p)go();}} placeholder="••••••••" style={inp}/></div>{err&&<div style={{color:C.acc,fontSize:12,fontWeight:500}}>{err}</div>}<Btn onClick={go} disabled={ld||!u||!p} full>{ld?"Bejelentkezés...":"Bejelentkezés →"}</Btn></div></div></div></div>);
 }
 
 const NAV=[
@@ -1069,7 +1066,7 @@ function Settings({user}){
   const f=(k)=>({value:form[k],onChange:v=>setForm(x=>({...x,[k]:v}))});
 
   useEffect(()=>{
-    db.get("team_users",true).then(d=>setUsers(d||DEFAULT_USERS));
+    db.get("team_users",true).then(d=>setUsers(d||[]));
     db.get("ai_system_prompt",true).then(d=>setAiPrompt(d||DEFAULT_AI_PROMPT));
   },[]);
 
@@ -1168,7 +1165,7 @@ function MainApp({user,onLogout,onPublic}){
   useEffect(()=>{
     db.get("all_orders",true).then(d=>{const data=d||INIT_ORDERS;setOrders(data);setNextId(Math.max(...data.map(o=>o.id),0)+1);setReady(true);});
     db.get("inbox_convos",true).then(d=>setConvos(d||SAMPLE_CONVOS));
-    db.get("team_users",true).then(d=>setUsers(d||DEFAULT_USERS));
+    db.get("team_users",true).then(d=>setUsers(d||[]));
   },[]);
   useEffect(()=>{if(ready)db.set("all_orders",orders,true);},[orders,ready]);
   const upd=(id,patch)=>setOrders(p=>p.map(o=>o.id===id?{...o,...patch}:o));
@@ -1189,7 +1186,7 @@ function MainApp({user,onLogout,onPublic}){
   };
   return(<div style={{display:"flex",minHeight:"100vh",background:C.bg,color:C.tx,fontFamily:F}}>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <style>{"*{scrollbar-width:thin;scrollbar-color:#1e1e1e #0a0a0a}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:#0a0a0a}::-webkit-scrollbar-thumb{background:#1e1e1e;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#2a2a2a}::-webkit-scrollbar-corner{background:#0a0a0a}"}</style>
+    <style>{"*{margin:0;padding:0;box-sizing:border-box}html,body{background:#0c0c0f;width:100%;height:100%}#root{min-height:100vh}*{scrollbar-width:thin;scrollbar-color:#1e1e1e #0a0a0a}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:#0a0a0a}::-webkit-scrollbar-thumb{background:#1e1e1e;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#2a2a2a}::-webkit-scrollbar-corner{background:#0a0a0a}"}</style>
     <Sidebar active={view} setActive={setView} user={user} onLogout={onLogout} onPublic={onPublic} orders={orders} convos={convos}/>
     <div style={{flex:1,padding:view==="inbox"?"0":"32px 36px",overflowY:view==="inbox"?"hidden":"auto",minWidth:0}}>{panels[view]||null}</div>
   </div>);
