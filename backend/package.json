@@ -1,0 +1,20 @@
+{
+  "name": "alkatresz-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.6.2",
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.3.1",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.4.5"
+  }
+}
