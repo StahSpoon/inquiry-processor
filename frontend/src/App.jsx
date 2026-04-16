@@ -1230,12 +1230,13 @@ function CatalogueManager({user}){
   const handleFiles=async(files)=>{
     const raw=await Promise.all(Array.from(files).map(file=>new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(file);})));
     const compressed=await Promise.all(raw.map(compressImage));
-    setImages(prev=>[...prev,...compressed]);
+    setImages(prev=>[...prev,...compressed]); // store compressed
     setAnalyzing(true);
     try{
+      // Send ORIGINAL uncompressed images to AI for accurate serial reading
       const knownSerials=Object.entries(learned).slice(0,20).map(([s,v])=>`${s} = ${v.car} (${v.partName})`).join("\n");
       const msgContent=[
-        ...compressed.map(b64=>({type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64.split(",")[1]}})),
+        ...raw.map(b64=>({type:"image",source:{type:"base64",media_type:b64.split(";")[0].split(":")[1],data:b64.split(",")[1]}})),
         {type:"text",text:`You are an expert auto parts identification specialist.\n\nSERIAL NUMBER RULES:\n- Read digit by digit exactly as stamped/engraved\n- Common misreads: 0 vs O, 1 vs I, 5 vs 6, 8 vs B\n- Cross-reference serial to verify part name\n\nCAR IDENTIFICATION:\n- ONLY state car make+model+year if it is WRITTEN ON THE PART (sticker, embossed, casting)\n- NEVER guess car from serial number alone\n- If not visible: set car to null\n${knownSerials?"\\nKNOWN CORRECTIONS:\\n"+knownSerials:""}\n\nRespond ONLY with valid JSON:\n{"partName":"specific Hungarian part name","serialNumber":"exact digits or null","serialNumberVerified":"cross-reference result","serialNumberWarning":"ambiguous chars or null","serialNumberConfidence":"high/medium/low","car":"make model year or null","condition":"Jó","estimatedPricePLN":0,"estimatedPriceHUF":0,"priceNote":"OEM vs aftermarket range","description":"2-3 sentence Hungarian description"}`}
       ];
       const txt=await ai([{role:"user",content:msgContent}]);
