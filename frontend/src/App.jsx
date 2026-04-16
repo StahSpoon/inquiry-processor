@@ -489,7 +489,7 @@ function Inbox({onCreateOrder,userName,users=[]}){
     const lang=chInfo?.lang==="PL"?"lengyel":"magyar";
     const history=ac.messages.slice(-6).map(m=>(m.from==="in"?"Ügyfél: ":"Mi: ")+m.text).join("\n");
     try{
-      const txt=await ai([{role:"user",content:`Te egy autóalkatrész-kereskedés AI asszisztense vagy. Az alábbi ${lang} nyelvű beszélgetés alapján adj rövid választ ${lang} nyelven és azonosítsd az érdeklődést ha van.\n\nBeszélgetés:\n${history}\n\nVálaszolj JSON-ban: {"reply":"javasolt válasz ${lang} nyelven","inquiry":{"partName":"alkatrész neve","car":"jármű vagy null","quantity":1}}`}]);
+      const txt=await ai([{role:"user",content:`Te egy autóalkatrész-kereskedés AI asszisztense vagy. Az alábbi ${lang} nyelvű beszélgetés alapján adj rövid választ ${lang} nyelven és azonosítsd az érdeklődést ha van.\n\nBeszélgetés:\n${history}\n\nVálaszolj JSON-ban: {"reply":"javasolt válasz ${lang} nyelven","inquiry":{"partName":"alkatrész neve","car":"exact make + model + generation + year e.g. Mercedes-Benz C-Class W204 2010 or BMW 3 Series E90 2008 - never just the brand name alone","quantity":1}}`}]);
       const d=JSON.parse(txt.replace(/```json|```/g,"").trim());
       setAiSugg(d);
     }catch{setAiSugg({reply:"Nem sikerült az AI elemzés.",inquiry:null});}
