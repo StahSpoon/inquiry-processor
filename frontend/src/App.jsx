@@ -1543,8 +1543,8 @@ function MainApp({user,onLogout,onPublic}){
   const[orders,setOrders]=useState([]);const[ready,setReady]=useState(false);const[nextId,setNextId]=useState(100);
   const[convos,setConvos]=useState([]);const[users,setUsers]=useState([]);
   useEffect(()=>{
-    db.get("all_orders",true).then(d=>{const data=d||INIT_ORDERS;setOrders(data);setNextId(Math.max(...data.map(o=>o.id),0)+1);setReady(true);});
-    db.get("inbox_convos",true).then(d=>setConvos(d||SAMPLE_CONVOS));
+    db.get("all_orders",true).then(d=>{const data=d||INIT_ORDERS;setOrders(data);setNextId((data.length?Math.max(...data.map(o=>o.id)):0)+1);setReady(true);});
+    db.get("inbox_convos",true).then(d=>setConvos(Array.isArray(d)?d:[]));
     db.get("team_users",true).then(d=>setUsers(d||[]));
   },[]);
   useEffect(()=>{if(ready)db.set("all_orders",orders,true);},[orders,ready]);
@@ -1552,28 +1552,29 @@ function MainApp({user,onLogout,onPublic}){
   const del=(id)=>setOrders(p=>p.filter(o=>o.id!==id));
   const add=(o)=>{setOrders(p=>[{...o,id:nextId},...p]);setNextId(n=>n+1);setView("orders");};
   const panels={
-    dashboard:<Dashboard orders={orders} convos={convos} onNav={(v,f)=>{setView(v);if(f)setOrdersFilter(f);}}/>,
-    ai:<AiDashboard orders={orders}/>,
-    inbox:<Inbox onCreateOrder={(o)=>{add(o);setView("orders");}} userName={user.name} users={users}/>,
-    inquiry:<Inquiry onOrderCreated={add} userName={user.name}/>,
-    orders:<Orders orders={orders} onChange={upd} onDelete={del} initialFilter={ordersFilter} onFilterUsed={()=>setOrdersFilter("all")}/>,
-    krakow:<Krakow orders={orders} onChange={upd}/>,
-    catalogue:<CatalogueManager user={user}/>,
-    calculator:<PriceCalculator/>,
-    templates:<Templates/>,
-    customers:<Customers orders={orders}/>,
-    settings:<Settings user={user}/>,
+    dashboard:()=><Dashboard orders={orders} convos={convos} onNav={(v,f)=>{setView(v);if(f)setOrdersFilter(f);}}/>,
+    ai:()=><AiDashboard orders={orders}/>,
+    inbox:()=><Inbox onCreateOrder={(o)=>{add(o);setView("orders");}} userName={user.name} users={users}/>,
+    inquiry:()=><Inquiry onOrderCreated={add} userName={user.name}/>,
+    orders:()=><Orders orders={orders} onChange={upd} onDelete={del} initialFilter={ordersFilter} onFilterUsed={()=>setOrdersFilter("all")}/>,
+    krakow:()=><Krakow orders={orders} onChange={upd}/>,
+    catalogue:()=><CatalogueManager user={user}/>,
+    calculator:()=><PriceCalculator/>,
+    templates:()=><Templates/>,
+    customers:()=><Customers orders={orders}/>,
+    settings:()=><Settings user={user}/>,
   };
   return(<div style={{display:"flex",minHeight:"100vh",background:C.bg,color:C.tx,fontFamily:F}}>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     <style>{"*{margin:0;padding:0;box-sizing:border-box}html,body{background:#0c0c0f;width:100%;height:100%}#root{min-height:100vh}*{scrollbar-width:thin;scrollbar-color:#1e1e1e #0a0a0a}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:#0a0a0a}::-webkit-scrollbar-thumb{background:#1e1e1e;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#2a2a2a}::-webkit-scrollbar-corner{background:#0a0a0a}"}</style>
     <Sidebar active={view} setActive={setView} user={user} onLogout={onLogout} onPublic={onPublic} orders={orders} convos={convos}/>
-    <div style={{flex:1,padding:view==="inbox"?"0":"32px 36px",overflowY:view==="inbox"?"hidden":"auto",minWidth:0}}>{panels[view]||null}</div>
+    <div style={{flex:1,padding:view==="inbox"?"0":"32px 36px",overflowY:view==="inbox"?"hidden":"auto",minWidth:0}}>{panels[view]?panels[view]():null}</div>
   </div>);
 }
 
 export default function App(){
   const[user,setUser]=useState(null);const[pub,setPub]=useState(false);
+  useEffect(()=>{window.__setPublic=(v)=>setPub(v);},[]);
   if(pub)return <PublicCatalogue onBack={()=>setPub(false)}/>;
   if(!user)return <Login onLogin={setUser}/>;
   return <MainApp user={user} onLogout={()=>setUser(null)} onPublic={()=>setPub(true)}/>;
