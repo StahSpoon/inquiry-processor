@@ -77,7 +77,7 @@ const db={
   async set(k,v,sh=false){try{await window.storage.set(k,JSON.stringify(v),sh);}catch{}},
 };
 async function ai(messages,sys){
-  const body={model:"claude-haiku-4-5-20251001",max_tokens:1200,messages};
+  const body={model:"claude-sonnet-4-20250514",max_tokens:1200,messages};
   if(sys)body.system=sys;
   const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   const d=await r.json();return d.content?.find(b=>b.type==="text")?.text||"";
