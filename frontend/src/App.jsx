@@ -15,8 +15,70 @@ const ST={
   ready:   {color:C.green, bg:"#16a34a12",label:"Átvehető"},
 };
 const SQ=["pending","awaiting","ordered","krakow","transit","ready"];
-const CONDITIONS=["Új","Kiváló","Jó","Közepes","Alkatrésznek"];
-const COND_C={Új:C.green,Kiváló:"#65a30d",Jó:C.blue,Közepes:C.amber,Alkatrésznek:C.red};
+const CONDITIONS=["Új","Kiváló","Jó","Közepes","Javított","Felújított","Hibás"];
+// -- i18n translations --
+const T={
+  hu:{
+    browse:"Alkatrészek böngészése",search:"Keresés...",allCond:"Minden állapot",
+    allCat:"Minden kategória",noResults:"Nincs találat",clearFilters:"Szűrők törlése",
+    loading:"Betöltés...",price:"Ár",contact:"Elérhetőség",pickup:"Átvétel",
+    condition:"Állapot",serial:"Cikkszám",vehicle:"Jármű",call:"Hívás",whatsapp:"WhatsApp",
+    admin:"Admin",back:"← Vissza",available:"Elérhető",sold:"Eladva",
+    askPrice:"Ár: érdeklődjön",description:"Leírás",category:"Kategória",
+    heroTitle:"Lengyel alkatrész.",heroRed:"Magyar ár.",
+    heroSub:"Közvetlen import Krakkóból - eredeti és utángyártott alkatrészek, kedvező áron.",
+    partQuality:"Ellenőrzött minőség",fastShip:"Gyors kiszállítás",
+    directImport:"Közvetlen import",allMakes:"Minden márka",
+  },
+  en:{
+    browse:"Browse Parts",search:"Search...",allCond:"All conditions",
+    allCat:"All categories",noResults:"No results found",clearFilters:"Clear filters",
+    loading:"Loading...",price:"Price",contact:"Contact",pickup:"Pickup",
+    condition:"Condition",serial:"Part No.",vehicle:"Vehicle",call:"Call",whatsapp:"WhatsApp",
+    admin:"Admin",back:"← Back",available:"Available",sold:"Sold",
+    askPrice:"Ask for price",description:"Description",category:"Category",
+    heroTitle:"Polish parts.",heroRed:"Hungarian price.",
+    heroSub:"Direct import from Kraków - OEM and aftermarket parts, best prices, fast delivery.",
+    partQuality:"Verified quality",fastShip:"Fast delivery",
+    directImport:"Direct import",allMakes:"All makes",
+  }
+};
+function useLang(){
+  const[lang,setLang]=useState(()=>{try{return localStorage.getItem("autorra_lang")||"hu";}catch{return "hu";}});
+  const switchLang=(l)=>{setLang(l);try{localStorage.setItem("autorra_lang",l);}catch{}};
+  return[lang,switchLang,T[lang]||T.hu];
+}
+
+// -- Part categories --
+// Part category hierarchy: {id, label, sub:[...]}
+const PART_CAT_TREE=[
+  {id:"Fékrendszer",label:"Fékrendszer",sub:["Féktárcsa","Fékbetét","Féknyereg","Fékcső / Főfékhenger","Kézifék","ABS szenzor","Fékfolyadék tartály"]},
+  {id:"Motor",label:"Motor",sub:["Hengerfej","Szelepfedél","Olajteknő","Vezérlés / Lánc","Turbó","Befecskendező","Fojtószelep","Üzemanyag pumpa","Olajszűrő ház","Szívócső","EGR szelep"]},
+  {id:"Felfüggesztés",label:"Felfüggesztés / Futómű",sub:["Lengéscsillapító","Rugó","Stabilizátor rúd","Lengőkar","Kerékcsapágy","Gömbcsukló","Kerékagycsapágy","Teleszkóp"]},
+  {id:"Kormányzás",label:"Kormányzás",sub:["Kormánymű","Kormányrúd","Összekötőrúd","Szervószivattyú","Szervócső","Irányváltó"]},
+  {id:"Hajtáslánc",label:"Váltó / Hajtáslánc",sub:["Váltó","Tengelykapcsoló","Hajtótengely / Féltengely","Kardántengely","Differenciálmű","Lendkerék","Erőátviteli szíj / lánc"]},
+  {id:"Karosszéria",label:"Karosszéria / Külső",sub:["Motorháztető","Sárvédő","Ajtó","Lökhárító","Csomagtérajtó / Klapa","Küszöb","Tükör","Szélvédő","Tetőablak"]},
+  {id:"BelsoTer",label:"Belső tér",sub:["Műszerfal","Ülés","Kárpit","Biztonsági öv","Légzsák","Belső ajtópanel","Központizár","Ablakemelő motor"]},
+  {id:"Elektromos",label:"Elektromos / Elektronika",sub:["Generátor","Önindító","Akkumulátor","ECU / Vezérlőegység","Érzékelő / Szenzor","Biztosíték tábla","Kábelköteg","Gyújtótrafó"]},
+  {id:"Huto",label:"Hűtő / Klíma",sub:["Hűtő","Ventilátor","Vízszivattyú","Termosztát","Klímakompresszor","Klímahűtő","Fűtésradiátor","Hőmérséklet szenzor"]},
+  {id:"Kipufogo",label:"Kipufogó",sub:["Katalizátor","Hangtompító","Kipufogócső","Lambda szonda","Kipufogó-gyűjtőcső","DPF / FAP szűrő"]},
+  {id:"Vilagitas",label:"Világítás",sub:["Fényszóró","Hátsó lámpa","Nappali fény (DRL)","Ködlámpa","Izzó","LED modul"]},
+  {id:"Szurok",label:"Szűrők",sub:["Levegőszűrő","Olajszűrő","Üzemanyagszűrő","Pollenszűrő / Kabinszűrő","Hidraulikus szűrő"]},
+  {id:"Egyeb",label:"Egyéb",sub:["Vonóhorog","Csomagtartó","Zajszigetelés","Felni","Gumi"]},
+];
+// Flat list for backwards compat with storefront
+const PART_CATS=PART_CAT_TREE.map(c=>c.label);
+// All flat subcategories for search
+const PART_CATS_ALL=PART_CAT_TREE.flatMap(c=>[c.label,...c.sub]);
+
+// -- Vehicle makes for filter --
+const MAKES=[
+  "Audi","BMW","Chevrolet","Chrysler","Citroën","Dacia","Fiat","Ford","Honda",
+  "Hyundai","Kia","Mazda","Mercedes-Benz","Mitsubishi","Nissan","Opel","Peugeot",
+  "Renault","Seat","Skoda","Subaru","Suzuki","Toyota","Volkswagen","Volvo","Egyéb",
+];
+
+const COND_C={Új:C.green,Kiváló:"#65a30d",Jó:C.blue,Közepes:C.amber,Javított:"#0891b2",Felújított:"#7c3aed",Hibás:C.acc};
 const CHANNELS={
   fb_hu:{label:"Messenger",country:"HU",color:"#3b82f6",lang:"HU"},
   wa_hu:{label:"WhatsApp", country:"HU",color:"#22c55e",lang:"HU"},
@@ -51,11 +113,11 @@ const INIT_ORDERS=[]
 
 const SAMPLE_CONVOS=[]
 function makeId(name,zip){
-  if(!name)return"—";
+  if(!name)return"-";
   const acc="ÁáÉéÍíÓóÖöŐőÚúÜüŰű",base="AaEeIiOoOoOoUuUuUu";
   const strip=s=>[...s].map(c=>{const i=acc.indexOf(c);return i>=0?base[i]:c;}).join("").toUpperCase();
   const initials=name.trim().split(" ").filter(Boolean).map(w=>strip(w)[0]||"").join("").slice(0,4);
-  return(initials+((zip||"").replace(/[^0-9]/g,""))).slice(0,10)||"—";
+  return(initials+((zip||"").replace(/[^0-9]/g,""))).slice(0,10)||"-";
 }
 
 // getParts: normalize order to parts array (supports legacy single-part + new multi-part)
@@ -108,110 +170,95 @@ const CopyBtn=({text})=>{const[c,setC]=useState(false);return <button onClick={(
 const Modal=({children,onClose,width=520})=>(<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20,backdropFilter:"blur(4px)"}}><div onClick={e=>e.stopPropagation()} style={{background:C.s1,border:`1px solid ${C.bd2}`,borderRadius:12,width:"100%",maxWidth:width,maxHeight:"90vh",overflowY:"auto"}}>{children}</div></div>);
 const PH=({children,sub})=>(<div style={{marginBottom:24}}><h2 style={{fontSize:20,fontWeight:800,color:C.tx,margin:0,letterSpacing:-0.3}}>{children}</h2>{sub&&<p style={{color:C.mu,fontSize:13,margin:"4px 0 0"}}>{sub}</p>}</div>);
 
-function Login({onLogin}){
+// Lockout helpers
+const LOCKOUT_KEY="autorra_login_attempts";
+function getAttempts(){try{return JSON.parse(localStorage.getItem(LOCKOUT_KEY)||"[]");}catch{return[];}}
+function recordAttempt(){const a=[...getAttempts(),Date.now()];localStorage.setItem(LOCKOUT_KEY,JSON.stringify(a.slice(-10)));}
+function clearAttempts(){localStorage.removeItem(LOCKOUT_KEY);}
+function getLockoutStatus(){
+  const now=Date.now();
+  const a=getAttempts();
+  const r1=a.filter(t=>now-t<3600000);
+  const r24=a.filter(t=>now-t<86400000);
+  if(r1.length>=3){
+    if(r24.length>=5) return{blocked:true,hard:true,msg:"Locked. Contact administrator."};
+    const mins=Math.ceil((r1[r1.length-3]+3600000-now)/60000);
+    return{blocked:true,hard:false,msg:`Try again in ${mins} min`};
+  }
+  return{blocked:false};
+}
+
+// Inline login form - used inside popout
+function LoginInline({onLogin,theme}){
   const[u,setU]=useState("");
   const[p,setP]=useState("");
   const[err,setErr]=useState("");
   const[ld,setLd]=useState(false);
   const[remember,setRemember]=useState(true);
-  const[theme,setTheme]=useState(_theme);
+  const[lockout,setLockout]=useState(getLockoutStatus);
 
-  // Check saved session on mount
   useEffect(()=>{
     try{
       const saved=localStorage.getItem("am_session");
-      if(saved){
-        const{user,expiry}=JSON.parse(saved);
-        if(expiry>Date.now()) onLogin(user);
-        else localStorage.removeItem("am_session");
-      }
+      if(saved){const{user,expiry}=JSON.parse(saved);if(expiry>Date.now()){onLogin(user);return;}else localStorage.removeItem("am_session");}
     }catch{}
+    const t=setInterval(()=>setLockout(getLockoutStatus()),15000);
+    return()=>clearInterval(t);
   },[]);
 
   const go=async()=>{
+    const ls=getLockoutStatus();
+    if(ls.blocked){setErr(ls.msg);return;}
     setLd(true);setErr("");
     try{
       const API=window.__getApiBase?.()||"";
       const r=await fetch(`${API}/api/auth/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,password:p})});
       const d=await r.json();
-      if(!r.ok) throw new Error(d.error||"Hiba");
+      if(!r.ok) throw new Error(d.error||"Error");
+      clearAttempts();
       localStorage.setItem("am_token",d.token);
       if(window.__setAuthToken) window.__setAuthToken(d.token);
-      if(remember){
-        const expiry=Date.now()+(30*24*60*60*1000); // 30 days
-        localStorage.setItem("am_session",JSON.stringify({user:d.user,expiry}));
-      }
+      if(remember) localStorage.setItem("am_session",JSON.stringify({user:d.user,expiry:Date.now()+30*24*3600000}));
       onLogin(d.user);
-    }catch(e){setErr(e.message||"Hibás felhasználónév vagy jelszó.");setLd(false);}
+    }catch(e){
+      recordAttempt();
+      const ls2=getLockoutStatus();
+      setErr(ls2.blocked?ls2.msg:(e.message||"Invalid credentials"));
+      setLockout(ls2);setLd(false);
+    }
   };
 
-  const isDark=theme==="dark";
-  const bg=isDark?"#0c0c0f":"#f8f8fa";
-  const card=isDark?"#111116":"#ffffff";
-  const border=isDark?"#22222c":"#e0e0ea";
-  const tx=isDark?"#f0f0f8":"#0c0c18";
-  const mu=isDark?"#606070":"#888898";
+  const isDk=theme==="dark";
+  const bdr=isDk?"#1e1e26":"#e8e8ee";
+  const tx2=isDk?"#f0f0f8":"#111";
+  const mu2=isDk?"#555":"#aaa";
+  const bg2=isDk?"#111116":"#fff";
 
+  const placeholderColor=isDk?"#3a3a4a":"#bbb";
   return(
-    <div style={{minHeight:"100vh",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}>
-      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-      <style>{"*{margin:0;padding:0;box-sizing:border-box}html,body{background:"+bg+";height:100%}"}</style>
-
-      {/* Theme toggle top right */}
-      <button onClick={()=>{const t=theme==="light"?"dark":"light";applyTheme(t);setTheme(t);}} style={{position:"fixed",top:16,right:16,background:"transparent",border:`1px solid ${border}`,borderRadius:8,padding:"6px 12px",fontSize:13,cursor:"pointer",color:mu,fontFamily:F}}>
-        {theme==="light"?"🌙":"☀"}
-      </button>
-
-      <div style={{width:380,padding:"0 20px"}}>
-        {/* Logo */}
-        <div style={{textAlign:"center",marginBottom:40}}>
-          <div style={{fontSize:42,fontWeight:900,letterSpacing:-1.5,color:tx,marginBottom:6}}>
-            auto<span style={{color:"#dc2626"}}>rra</span>
-          </div>
-          <div style={{fontSize:12,color:mu,letterSpacing:0.5}}>Admin belépés</div>
+    <div>
+      <style>{`.aur-input::placeholder{color:${placeholderColor}}.aur-input:focus{border-color:#dc2626!important}`}</style>
+      <input value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&p&&!lockout.blocked&&go()}
+        placeholder="username" autoComplete="username" className="aur-input"
+        style={{display:"block",width:"100%",padding:"9px 11px",marginBottom:1,border:`1px solid ${bdr}`,borderRadius:0,background:bg2,color:tx2,fontSize:12,fontFamily:F,outline:"none",transition:"border-color 0.12s"}}/>
+      <input type="password" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&u&&!lockout.blocked&&go()}
+        placeholder="password" autoComplete="current-password" className="aur-input"
+        style={{display:"block",width:"100%",padding:"9px 11px",marginBottom:10,border:`1px solid ${bdr}`,borderRadius:0,background:bg2,color:tx2,fontSize:12,fontFamily:F,outline:"none",transition:"border-color 0.12s"}}/>
+      {err&&<div style={{fontSize:10,color:"#dc2626",marginBottom:8,lineHeight:1.4}}>{err}</div>}
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12,cursor:"pointer"}} onClick={()=>setRemember(r=>!r)}>
+        <div style={{width:12,height:12,border:`1.5px solid ${remember?"#dc2626":bdr}`,background:remember?"#dc2626":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {remember&&<span style={{color:"#fff",fontSize:7,lineHeight:1,fontWeight:900}}>✓</span>}
         </div>
-
-        {/* Card */}
-        <div style={{background:card,border:`1px solid ${border}`,borderRadius:14,padding:32,boxShadow:isDark?"none":"0 4px 24px rgba(0,0,0,0.06)"}}>
-          <div style={{display:"flex",flexDirection:"column",gap:16}}>
-
-            <div>
-              <div style={{fontSize:10,color:mu,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Felhasználónév</div>
-              <input value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&u&&p)go();}} placeholder="felhasználónév" autoComplete="username"
-                style={{width:"100%",padding:"11px 14px",borderRadius:8,border:`1.5px solid ${err?'#dc2626':border}`,background:isDark?"#16161d":"#fafafa",color:tx,fontSize:14,fontFamily:F,outline:"none"}}/>
-            </div>
-
-            <div>
-              <div style={{fontSize:10,color:mu,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Jelszó</div>
-              <input type="password" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&u&&p)go();}} placeholder="••••••••" autoComplete="current-password"
-                style={{width:"100%",padding:"11px 14px",borderRadius:8,border:`1.5px solid ${err?'#dc2626':border}`,background:isDark?"#16161d":"#fafafa",color:tx,fontSize:14,fontFamily:F,outline:"none"}}/>
-            </div>
-
-            {/* Remember me */}
-            <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>setRemember(r=>!r)}>
-              <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${remember?"#dc2626":border}`,background:remember?"#dc2626":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.15s"}}>
-                {remember&&<span style={{color:"#fff",fontSize:11,fontWeight:800}}>✓</span>}
-              </div>
-              <span style={{fontSize:12,color:mu}}>Emlékezz rám 30 napig</span>
-            </div>
-
-            {err&&<div style={{color:"#dc2626",fontSize:12,fontWeight:500,background:"#dc262610",borderRadius:6,padding:"8px 12px"}}>{err}</div>}
-
-            <button onClick={go} disabled={ld||!u||!p}
-              style={{width:"100%",padding:"13px 0",background:ld||!u||!p?"#888":"#dc2626",color:"#fff",border:"none",borderRadius:9,fontSize:15,fontWeight:800,cursor:ld||!u||!p?"not-allowed":"pointer",fontFamily:F,letterSpacing:-0.3,transition:"background 0.15s"}}>
-              {ld?"Bejelentkezés...":"Belépés →"}
-            </button>
-
-          </div>
-        </div>
-
-        <div style={{textAlign:"center",marginTop:20,fontSize:11,color:mu}}>
-          autorra.hu · Admin felület
-        </div>
+        <span style={{fontSize:10,color:mu2,letterSpacing:0.2}}>Remember for 30 days</span>
       </div>
+      <button onClick={go} disabled={ld||!u||!p||lockout.blocked}
+        style={{width:"100%",padding:"9px 0",background:lockout.blocked?"#555":!u||!p?"transparent":"#dc2626",color:lockout.blocked||(!u||!p)?mu2:"#fff",border:`1px solid ${!u||!p?bdr:"#dc2626"}`,fontSize:11,fontWeight:700,cursor:lockout.blocked||!u||!p?"default":"pointer",fontFamily:F,letterSpacing:0.5,textTransform:"uppercase",transition:"all 0.12s"}}>
+        {ld?"·  ·  ·":lockout.blocked?"Locked":"Login →"}
+      </button>
     </div>
   );
 }
+
 
 const NAV=[
   {id:"dashboard",label:"Irányítópult",icon:"▣"},
@@ -225,6 +272,7 @@ const NAV=[
   {id:"templates",label:"Sablonok",     icon:"◫"},
   {id:"customers",label:"Vevők",         icon:"◷"},
   {id:"settings", label:"Beállítások",  icon:"⚙"},
+  {id:"security", label:"Biztonság",     icon:"🔒"},
 ];
 function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggleTheme}){
   const kn=orders.filter(o=>o.status==="krakow").length;
@@ -243,14 +291,7 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggle
         {NAV.filter(n=>!n.admin||user.role==="admin").map(n=>{
           const a=active===n.id;
           return(
-            <button key={n.id} onClick={()=>setActive(n.id)} style={{
-              display:"flex",alignItems:"center",gap:10,padding:"9px 20px",
-              border:"none",cursor:"pointer",width:"100%",textAlign:"left",
-              background:"transparent",
-              borderLeft:a?"2px solid "+C.acc:"2px solid transparent",
-              color:a?"#e8e8e8":"#3a3a3a",
-              fontSize:12,fontWeight:a?600:400,fontFamily:F,transition:"color 0.1s",
-            }}>
+            <button key={n.id} onClick={()=>setActive(n.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 20px",border:"none",cursor:"pointer",width:"100%",textAlign:"left",background:"transparent",borderLeft:a?"2px solid "+C.acc:"2px solid transparent",color:a?"#e8e8e8":"#3a3a3a",fontSize:12,fontWeight:a?600:400,fontFamily:F,transition:"color 0.1s"}}>
               <span style={{fontSize:10,color:a?C.acc:"#2a2a2a",flexShrink:0}}>{n.icon}</span>
               <span style={{flex:1}}>{n.label}</span>
               {n.id==="krakow"&&<Dot n={kn} col={C.purple}/>}
@@ -289,21 +330,21 @@ function Dashboard({orders,convos,onNav}){
 
   return(
     <div>
-      <PH sub={`${today} — összesített üzleti áttekintő`}>Irányítópult</PH>
+      <PH sub={`${today} - összesített üzleti áttekintő`}>Irányítópult</PH>
 
       {/* Alerts */}
       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
         {unread>0&&(
           <div onClick={()=>onNav("inbox")} style={{background:C.acc+"10",border:`1px solid ${C.acc}25`,borderRadius:8,padding:"11px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
             <span>📬</span>
-            <span style={{fontSize:13,color:C.t2,flex:1}}><strong style={{color:C.acc}}>{unread} megválaszolatlan üzenet</strong> — kattints a beérkezőhöz</span>
+            <span style={{fontSize:13,color:C.t2,flex:1}}><strong style={{color:C.acc}}>{unread} megválaszolatlan üzenet</strong> - kattints a beérkezőhöz</span>
             <span style={{fontSize:11,color:C.mu}}>→</span>
           </div>
         )}
         {ready.length>0&&(
           <div onClick={()=>onNav("orders")} style={{background:C.green+"10",border:`1px solid ${C.green}25`,borderRadius:8,padding:"11px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
             <span>✅</span>
-            <span style={{fontSize:13,color:C.t2,flex:1}}><strong style={{color:C.green}}>{ready.length} rendelés átvehető</strong> — értesítsd az ügyfeleket</span>
+            <span style={{fontSize:13,color:C.t2,flex:1}}><strong style={{color:C.green}}>{ready.length} rendelés átvehető</strong> - értesítsd az ügyfeleket</span>
             <span style={{fontSize:11,color:C.mu}}>→</span>
           </div>
         )}
@@ -429,7 +470,7 @@ function AiDashboard({orders}){
         <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center"}}>
           <div style={{fontSize:32,marginBottom:12}}>✦</div>
           <div style={{fontSize:14,fontWeight:600,color:C.t2,marginBottom:6}}>AI üzleti elemzés</div>
-          <div style={{fontSize:12,color:C.mu,marginBottom:20,maxWidth:400,margin:"0 auto 20px"}}>Kattints az elemzés gombra — a mesterséges intelligencia feldolgozza az összes rendelési adatot és konkrét javaslatokat ad.</div>
+          <div style={{fontSize:12,color:C.mu,marginBottom:20,maxWidth:400,margin:"0 auto 20px"}}>Kattints az elemzés gombra - a mesterséges intelligencia feldolgozza az összes rendelési adatot és konkrét javaslatokat ad.</div>
           <Btn onClick={analyze}>✦ Elemzés indítása</Btn>
         </div>
       )}
@@ -602,7 +643,7 @@ function Inbox({onCreateOrder,userName,users=[]}){
   return(
     <div style={{display:"flex",height:"100vh",overflow:"hidden"}}>
 
-      {/* ── LEFT SIDEBAR ── */}
+      {/* -- LEFT SIDEBAR -- */}
       <div style={{width:300,background:C.s1,borderRight:`1px solid ${C.bd}`,display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
 
         {/* Header */}
@@ -658,7 +699,7 @@ function Inbox({onCreateOrder,userName,users=[]}){
         </div>
       </div>
 
-      {/* ── MAIN CHAT AREA ── */}
+      {/* -- MAIN CHAT AREA -- */}
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg}}>
         {!ac?(
           <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:C.mu,gap:12}}>
@@ -755,7 +796,7 @@ function Inbox({onCreateOrder,userName,users=[]}){
         )}
       </div>
 
-      {/* ── NEW CONVERSATION MODAL ── */}
+      {/* -- NEW CONVERSATION MODAL -- */}
       {newConvo&&(
         <Modal onClose={()=>setNewConvo(false)} width={400}>
           <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.bd}`,fontSize:14,fontWeight:700,color:C.tx}}>Új beszélgetés</div>
@@ -790,9 +831,9 @@ function Inquiry({onOrderCreated,userName}){
       const mup=calcState.perMarkup?.HUF!=null?calcState.perMarkup.HUF:calcState.markup;
       return Math.round(base*(1+mup/100));
     };
-    try{const text=await ai([{role:"user",content:`You are an expert auto parts assistant for a Hungarian business sourcing parts from Poland. Process this inquiry with MAXIMUM precision. CRITICAL SERIAL NUMBER RULES - follow exactly: - Copy every serial/OEM/part number CHARACTER BY CHARACTER as written, do not interpret - Watch for common misreads: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z - After extracting the serial, cross-reference it to VERIFY the exact part name and fitment - If any characters are ambiguous, flag them in serialNumberWarning - NEVER auto-correct a serial — report it exactly as the customer gave it Customer: ${cust||"Unknown"} (code: ${custCode}) Message: "${msg}" Respond ONLY with valid JSON, no other text: {"parts":[{"name":"specific Hungarian part name e.g. Első féktárcsa jobb","qty":1,"serialNumber":"OEM/part number EXACTLY as written - null if none","serialNumberVerified":"what this serial corresponds to based on cross-reference — confirms or corrects the part name","serialNumberWarning":"flag ambiguous chars e.g. position 3 could be 5 or 6 — null if clean","serialNumberConfidence":"high/medium/low","allegroUrl":"https://allegro.pl/listing?string=polish+terms+with+OEM+if+known","estimatedPricePLN":0}],"car":"FULL spec: make + model + generation + year e.g. Mercedes-Benz C-Class W204 2008, BMW 3 Series E90 2007 — NEVER brand alone — null if unknown","totalEstimatePLN":0,"totalEstimateHUF":"calculate using current rate: totalEstimatePLN * HUF_rate * (1 + markup/100)","priceNote":"OEM vs aftermarket price range and key factors affecting price","sellerMessagePL":"EXACTLY this format (translate part names to Polish): Witam aktualne?\nJaka cena do Krakowa po za allegro?\n[allegroUrl for this part]\n([customer code])\nDziękuję — one message per part with its own allegroUrl","customerReplyHU":"Hungarian reply with parts, verified serials, price estimate in HUF — ask for model/year if missing"}`}]);const parsed=JSON.parse(text.split(String.fromCharCode(96,96,96)+"json").join("").split(String.fromCharCode(96,96,96)).join("").trim());if(parsed.totalEstimatePLN)parsed.totalEstimateHUF=plnToHuf(parsed.totalEstimatePLN);if(parsed.parts)parsed.parts=parsed.parts.map(p=>p.estimatedPricePLN?{...p,estimatedPriceHUF:plnToHuf(p.estimatedPricePLN)}:p);setRes(parsed);}catch{setErr("Hiba. Próbálja újra.");}setLd(false);};
+    try{const text=await ai([{role:"user",content:`You are an expert auto parts assistant for a Hungarian business sourcing parts from Poland. Process this inquiry with MAXIMUM precision. CRITICAL SERIAL NUMBER RULES - follow exactly: - Copy every serial/OEM/part number CHARACTER BY CHARACTER as written, do not interpret - Watch for common misreads: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z - After extracting the serial, cross-reference it to VERIFY the exact part name and fitment - If any characters are ambiguous, flag them in serialNumberWarning - NEVER auto-correct a serial - report it exactly as the customer gave it Customer: ${cust||"Unknown"} (code: ${custCode}) Message: "${msg}" Respond ONLY with valid JSON, no other text: {"parts":[{"name":"specific Hungarian part name e.g. Első féktárcsa jobb","qty":1,"serialNumber":"OEM/part number EXACTLY as written - null if none","serialNumberVerified":"what this serial corresponds to based on cross-reference - confirms or corrects the part name","serialNumberWarning":"flag ambiguous chars e.g. position 3 could be 5 or 6 - null if clean","serialNumberConfidence":"high/medium/low","allegroUrl":"https://allegro.pl/listing?string=polish+terms+with+OEM+if+known","estimatedPricePLN":0}],"car":"FULL spec: make + model + generation + year e.g. Mercedes-Benz C-Class W204 2008, BMW 3 Series E90 2007 - NEVER brand alone - null if unknown","totalEstimatePLN":0,"totalEstimateHUF":"calculate using current rate: totalEstimatePLN * HUF_rate * (1 + markup/100)","priceNote":"OEM vs aftermarket price range and key factors affecting price","sellerMessagePL":"EXACTLY this format (translate part names to Polish): Witam aktualne?\nJaka cena do Krakowa po za allegro?\n[allegroUrl for this part]\n([customer code])\nDziękuję - one message per part with its own allegroUrl","customerReplyHU":"Hungarian reply with parts, verified serials, price estimate in HUF - ask for model/year if missing"}`}]);const parsed=JSON.parse(text.split(String.fromCharCode(96,96,96)+"json").join("").split(String.fromCharCode(96,96,96)).join("").trim());if(parsed.totalEstimatePLN)parsed.totalEstimateHUF=plnToHuf(parsed.totalEstimatePLN);if(parsed.parts)parsed.parts=parsed.parts.map(p=>p.estimatedPricePLN?{...p,estimatedPriceHUF:plnToHuf(p.estimatedPricePLN)}:p);setRes(parsed);}catch{setErr("Hiba. Próbálja újra.");}setLd(false);};
   const create=()=>{onOrderCreated({customer:cust||"Ismeretlen",platform:plat,part:res.partName,car:res.car||"",qty:res.quantity||1,allegroLink:res.allegroUrl||"",status:"pending",date:new Date().toISOString().split("T")[0],note:"",createdBy:userName});setMsg("");setCust("");setRes(null);};
-return(<div><PH sub="AI-alapú feldolgozás és fordítás">Új érdeklődés</PH><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}><Field label="Ügyfél neve" value={cust} onChange={setCust} placeholder="pl. Kovács Péter"/><Field label="Platform"><select value={plat} onChange={e=>setPlat(e.target.value)} style={inp}><option>WhatsApp</option><option>Messenger</option><option>Viber</option></select></Field></div><div style={{marginBottom:14}}><Field label="Ügyfél üzenete" value={msg} onChange={setMsg} placeholder="Illessze be az ügyfél üzenetét..." rows={4}/></div><Btn onClick={process} disabled={ld||!msg.trim()}>{ld?"⟳  Elemzés...":"✦  AI Feldolgozás"}</Btn>{err&&<div style={{marginTop:10,color:C.acc,fontSize:12}}>{err}</div>}{res&&(<div style={{marginTop:20,display:"flex",flexDirection:"column",gap:12}}><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:9,padding:18}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:12}}>AZONOSÍTOTT ADATOK</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:16}}>{[["Jármű",res.car||"—"],["Tételek",(res.parts?.length||1)+" db"],["Becsült ár (PLN)",res.totalEstimatePLN?(res.totalEstimatePLN+" PLN"):"—"],["Becsült ár (HUF)",res.totalEstimateHUF?(res.totalEstimateHUF+" Ft"):"—"]].map(([k,v])=>(<div key={k}><div style={{fontSize:10,color:C.mu,marginBottom:3}}>{k}</div><div style={{fontSize:13,color:C.tx,fontWeight:600}}>{v}</div></div>))}</div>{res.priceNote&&<div style={{background:C.amber+"10",border:`1px solid ${C.amber}25`,borderRadius:6,padding:"9px 12px",marginBottom:12,fontSize:11,color:C.t2}}><span style={{color:C.amber,fontWeight:700,marginRight:6}}>💰</span>{res.priceNote}</div>}{res.parts&&<div style={{marginBottom:12}}>{res.parts.map((p,i)=><div key={i} style={{padding:"10px 0",borderBottom:i<res.parts.length-1?`1px solid ${C.bd}`:"none"}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:p.serialNumber?4:0}}><span style={{fontSize:11,color:C.mu,minWidth:20}}>{i+1}.</span><span style={{flex:1,fontSize:13,color:C.tx,fontWeight:600}}>{p.name}</span><span style={{fontSize:12,fontWeight:700,color:C.acc,minWidth:36}}>{p.qty} db</span>{p.estimatedPricePLN>0&&<span style={{fontSize:11,fontWeight:700,color:C.green}}>~{p.estimatedPricePLN} PLN</span>}</div>{p.serialNumber&&(<div style={{paddingLeft:26,display:"flex",flexDirection:"column",gap:3}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:10,color:C.mu}}>Cikkszám:</span><span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,color:C.tx,letterSpacing:1,background:C.s2,borderRadius:3,padding:"1px 6px"}}>{p.serialNumber}</span><span style={{fontSize:9,borderRadius:3,padding:"1px 5px",background:p.serialNumberConfidence==="high"?C.green+"15":p.serialNumberConfidence==="medium"?C.amber+"15":C.acc+"15",color:p.serialNumberConfidence==="high"?C.green:p.serialNumberConfidence==="medium"?C.amber:C.acc,fontWeight:700}}>{p.serialNumberConfidence==="high"?"✓ Biztos":p.serialNumberConfidence==="medium"?"~ Valószínű":"⚠ Bizonytalan"}</span></div>{p.serialNumberWarning&&<div style={{fontSize:10,color:C.amber,display:"flex",alignItems:"center",gap:4}}><span>⚠</span><span>{p.serialNumberWarning}</span></div>}{p.serialNumberVerified&&<div style={{fontSize:10,color:C.mu}}>Ellenőrzés: <span style={{color:C.t2}}>{p.serialNumberVerified}</span></div>}</div>)}{p.allegroUrl&&<a href={p.allegroUrl} target="_blank" rel="noreferrer" style={{fontSize:11,color:C.blue}}>🔍</a>}</div>)}</div>}<div style={{display:"flex",alignItems:"center",gap:10}}><a href={res.allegroUrl||res.parts?.[0]?.allegroUrl} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,background:C.s2,color:C.blue,border:`1px solid ${C.bd}`,borderRadius:6,padding:"7px 12px",fontSize:12,fontWeight:600,textDecoration:"none"}}>🔍 Allegro keresés →</a><span style={{fontSize:11,color:C.mu,fontFamily:"monospace"}}>{res.allegroQuery}</span></div></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:9,padding:18}}> <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}> <div style={{display:"flex",alignItems:"center",gap:8}}> <span style={{fontSize:16}}>🇵🇱</span> <div> <div style={{fontSize:12,fontWeight:800,color:C.tx}}>Lengyel üzenet — Eladónak</div> <div style={{fontSize:10,color:C.mu,marginTop:1}}>Allegro eladónak küldendő · másold és küld el</div> </div> </div> <CopyBtn text={res.sellerMessagePL}/> </div> <div style={{background:C.s2,borderRadius:8,padding:"14px 16px",fontFamily:"monospace",fontSize:13,color:C.t2,border:`1px solid ${C.bd}`}}> {(res.sellerMessagePL||"").split("\n").map((line,i)=>{ const isUrl=line.trim().startsWith("http"); const isCode=line.trim().startsWith("(")&&line.trim().endsWith(")"); return( <div key={i} style={{marginBottom:line.trim()===""?8:4,minHeight:line.trim()===""?8:undefined}}> {isUrl?( <a href={line.trim()} target="_blank" rel="noreferrer" style={{color:C.blue,wordBreak:"break-all",fontSize:12}}>{line}</a> ):isCode?( <span style={{color:C.acc,fontWeight:700}}>{line}</span> ):( <span style={{color:line.trim()===""?undefined:C.t2}}>{line}</span> )} </div> ); })} </div> </div> <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:9,padding:18}}> <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}> <div style={{display:"flex",alignItems:"center",gap:8}}> <span style={{fontSize:16}}>🇭🇺</span> <div> <div style={{fontSize:12,fontWeight:800,color:C.tx}}>Magyar válasz — Ügyfélnek</div> <div style={{fontSize:10,color:C.mu,marginTop:1}}>Az ügyfélnek küldendő visszaigazolás</div> </div> </div> <CopyBtn text={res.customerReplyHU}/> </div> <div style={{background:C.s2,borderRadius:8,padding:"14px 16px",fontSize:13,color:C.t2,lineHeight:1.7,border:`1px solid ${C.bd}`}}> {(res.customerReplyHU||"").split("\n").map((line,i)=>( <div key={i} style={{marginBottom:line.trim()===""?8:3,minHeight:line.trim()===""?8:undefined}}>{line||<>&nbsp;</>}</div> ))} </div> </div><Btn v="success" onClick={create}>✓  Rendelés létrehozása (Függőben)</Btn></div>)}</div>);
+return(<div><PH sub="AI-alapú feldolgozás és fordítás">Új érdeklődés</PH><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}><Field label="Ügyfél neve" value={cust} onChange={setCust} placeholder="pl. Kovács Péter"/><Field label="Platform"><select value={plat} onChange={e=>setPlat(e.target.value)} style={inp}><option>WhatsApp</option><option>Messenger</option><option>Viber</option></select></Field></div><div style={{marginBottom:14}}><Field label="Ügyfél üzenete" value={msg} onChange={setMsg} placeholder="Illessze be az ügyfél üzenetét..." rows={4}/></div><Btn onClick={process} disabled={ld||!msg.trim()}>{ld?"⟳  Elemzés...":"✦  AI Feldolgozás"}</Btn>{err&&<div style={{marginTop:10,color:C.acc,fontSize:12}}>{err}</div>}{res&&(<div style={{marginTop:20,display:"flex",flexDirection:"column",gap:12}}><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:9,padding:18}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:12}}>AZONOSÍTOTT ADATOK</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:16}}>{[["Jármű",res.car||"-"],["Tételek",(res.parts?.length||1)+" db"],["Becsült ár (PLN)",res.totalEstimatePLN?(res.totalEstimatePLN+" PLN"):"-"],["Becsült ár (HUF)",res.totalEstimateHUF?(res.totalEstimateHUF+" Ft"):"-"]].map(([k,v])=>(<div key={k}><div style={{fontSize:10,color:C.mu,marginBottom:3}}>{k}</div><div style={{fontSize:13,color:C.tx,fontWeight:600}}>{v}</div></div>))}</div>{res.priceNote&&<div style={{background:C.amber+"10",border:`1px solid ${C.amber}25`,borderRadius:6,padding:"9px 12px",marginBottom:12,fontSize:11,color:C.t2}}><span style={{color:C.amber,fontWeight:700,marginRight:6}}>💰</span>{res.priceNote}</div>}{res.parts&&<div style={{marginBottom:12}}>{res.parts.map((p,i)=><div key={i} style={{padding:"10px 0",borderBottom:i<res.parts.length-1?`1px solid ${C.bd}`:"none"}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:p.serialNumber?4:0}}><span style={{fontSize:11,color:C.mu,minWidth:20}}>{i+1}.</span><span style={{flex:1,fontSize:13,color:C.tx,fontWeight:600}}>{p.name}</span><span style={{fontSize:12,fontWeight:700,color:C.acc,minWidth:36}}>{p.qty} db</span>{p.estimatedPricePLN>0&&<span style={{fontSize:11,fontWeight:700,color:C.green}}>~{p.estimatedPricePLN} PLN</span>}</div>{p.serialNumber&&(<div style={{paddingLeft:26,display:"flex",flexDirection:"column",gap:3}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:10,color:C.mu}}>Cikkszám:</span><span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,color:C.tx,letterSpacing:1,background:C.s2,borderRadius:3,padding:"1px 6px"}}>{p.serialNumber}</span><span style={{fontSize:9,borderRadius:3,padding:"1px 5px",background:p.serialNumberConfidence==="high"?C.green+"15":p.serialNumberConfidence==="medium"?C.amber+"15":C.acc+"15",color:p.serialNumberConfidence==="high"?C.green:p.serialNumberConfidence==="medium"?C.amber:C.acc,fontWeight:700}}>{p.serialNumberConfidence==="high"?"✓ Biztos":p.serialNumberConfidence==="medium"?"~ Valószínű":"⚠ Bizonytalan"}</span></div>{p.serialNumberWarning&&<div style={{fontSize:10,color:C.amber,display:"flex",alignItems:"center",gap:4}}><span>⚠</span><span>{p.serialNumberWarning}</span></div>}{p.serialNumberVerified&&<div style={{fontSize:10,color:C.mu}}>Ellenőrzés: <span style={{color:C.t2}}>{p.serialNumberVerified}</span></div>}</div>)}{p.allegroUrl&&<a href={p.allegroUrl} target="_blank" rel="noreferrer" style={{fontSize:11,color:C.blue}}>🔍</a>}</div>)}</div>}<div style={{display:"flex",alignItems:"center",gap:10}}><a href={res.allegroUrl||res.parts?.[0]?.allegroUrl} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,background:C.s2,color:C.blue,border:`1px solid ${C.bd}`,borderRadius:6,padding:"7px 12px",fontSize:12,fontWeight:600,textDecoration:"none"}}>🔍 Allegro keresés →</a><span style={{fontSize:11,color:C.mu,fontFamily:"monospace"}}>{res.allegroQuery}</span></div></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:9,padding:18}}> <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}> <div style={{display:"flex",alignItems:"center",gap:8}}> <span style={{fontSize:16}}>🇵🇱</span> <div> <div style={{fontSize:12,fontWeight:800,color:C.tx}}>Lengyel üzenet - Eladónak</div> <div style={{fontSize:10,color:C.mu,marginTop:1}}>Allegro eladónak küldendő · másold és küld el</div> </div> </div> <CopyBtn text={res.sellerMessagePL}/> </div> <div style={{background:C.s2,borderRadius:8,padding:"14px 16px",fontFamily:"monospace",fontSize:13,color:C.t2,border:`1px solid ${C.bd}`}}> {(res.sellerMessagePL||"").split("\n").map((line,i)=>{ const isUrl=line.trim().startsWith("http"); const isCode=line.trim().startsWith("(")&&line.trim().endsWith(")"); return( <div key={i} style={{marginBottom:line.trim()===""?8:4,minHeight:line.trim()===""?8:undefined}}> {isUrl?( <a href={line.trim()} target="_blank" rel="noreferrer" style={{color:C.blue,wordBreak:"break-all",fontSize:12}}>{line}</a> ):isCode?( <span style={{color:C.acc,fontWeight:700}}>{line}</span> ):( <span style={{color:line.trim()===""?undefined:C.t2}}>{line}</span> )} </div> ); })} </div> </div> <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:9,padding:18}}> <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}> <div style={{display:"flex",alignItems:"center",gap:8}}> <span style={{fontSize:16}}>🇭🇺</span> <div> <div style={{fontSize:12,fontWeight:800,color:C.tx}}>Magyar válasz - Ügyfélnek</div> <div style={{fontSize:10,color:C.mu,marginTop:1}}>Az ügyfélnek küldendő visszaigazolás</div> </div> </div> <CopyBtn text={res.customerReplyHU}/> </div> <div style={{background:C.s2,borderRadius:8,padding:"14px 16px",fontSize:13,color:C.t2,lineHeight:1.7,border:`1px solid ${C.bd}`}}> {(res.customerReplyHU||"").split("\n").map((line,i)=>( <div key={i} style={{marginBottom:line.trim()===""?8:3,minHeight:line.trim()===""?8:undefined}}>{line||<>&nbsp;</>}</div> ))} </div> </div><Btn v="success" onClick={create}>✓  Rendelés létrehozása (Függőben)</Btn></div>)}</div>);
 }
 
 const STATUS_NOTIFY={
@@ -822,13 +863,13 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
     }catch{}
     setNotifyLoad(false);
   };
-  return(<div><PH sub="Összes rendelés — státusz bármelyik irányba módosítható">Rendelések</PH><div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}><div style={{flex:1,position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.mu,fontSize:12,pointerEvents:"none"}}>🔍</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keresés ügyfél, alkatrész, autó..." style={{...inp,paddingLeft:32}}/></div><select value={filter} onChange={e=>setFilter(e.target.value)} style={{...inp,width:"auto"}}><option value="all">Összes ({orders.length})</option>{SQ.map(s=><option key={s} value={s}>{ST[s].label} ({orders.filter(o=>o.status===s).length})</option>)}</select></div>
+  return(<div><PH sub="Összes rendelés - státusz bármelyik irányba módosítható">Rendelések</PH><div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}><div style={{flex:1,position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.mu,fontSize:12,pointerEvents:"none"}}>🔍</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keresés ügyfél, alkatrész, autó..." style={{...inp,paddingLeft:32}}/></div><select value={filter} onChange={e=>setFilter(e.target.value)} style={{...inp,width:"auto"}}><option value="all">Összes ({orders.length})</option>{SQ.map(s=><option key={s} value={s}>{ST[s].label} ({orders.filter(o=>o.status===s).length})</option>)}</select></div>
     <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"visible"}}><div style={{display:"grid",gridTemplateColumns:"90px 140px 1fr 55px 165px 85px 110px",padding:"9px 16px",borderBottom:`1px solid ${C.bd}`,background:C.s2,borderRadius:"10px 10px 0 0"}}>{["Platform","Ügyfél","Alkatrész / Autó","Db","Státusz","Dátum",""].map((h,i)=>(<div key={i} style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8}}>{h.toUpperCase()}</div>))}</div>
     {shown.length===0&&<div style={{padding:32,textAlign:"center",color:C.mu,fontSize:13}}>Nincs találat.</div>}
     {shown.map((o,i)=>{const next=SQ[SQ.indexOf(o.status)+1];const isOpen=detailId===o.id;return(<div key={o.id} style={{borderBottom:i<shown.length-1?`1px solid ${C.bd}`:"none"}}><div onClick={()=>setDetailId(isOpen?null:o.id)} style={{display:"grid",gridTemplateColumns:"90px 140px 1fr 55px 165px 85px 110px",padding:"12px 16px",alignItems:"center",cursor:"pointer",background:isOpen?C.acc+"06":"transparent"}}><div style={{display:"flex",flexDirection:"column",gap:3}}><PBadge p={o.platform}/><span style={{fontSize:9,color:C.mu,fontFamily:"monospace",fontWeight:700}}>{makeId(o.customer,o.zip)}</span></div><div style={{fontSize:13,fontWeight:600,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{o.customer}</div><div style={{paddingRight:8}}><div style={{fontSize:13,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{partsLabel(o)}</div><div style={{fontSize:11,color:C.mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.car}</div></div><div style={{fontSize:13,color:C.t2,fontWeight:getParts(o).length>1?700:400,color:getParts(o).length>1?C.amber:C.t2}}>{totalQty(o)} db</div>
     <div style={{position:"relative"}}><SBadge status={o.status} onClick={e=>{e.stopPropagation();setStatusPicker(statusPicker===o.id?null:o.id);}}/>{statusPicker===o.id&&(<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:100,background:C.s1,border:`1px solid ${C.bd2}`,borderRadius:8,padding:6,minWidth:200,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,padding:"4px 8px 6px"}}>STÁTUSZ MÓDOSÍTÁSA</div>{SQ.map(s=>(<button key={s} onClick={()=>{onChange(o.id,{status:s});setStatusPicker(null);if(STATUS_NOTIFY[s])triggerNotify(o,s);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"7px 10px",background:o.status===s?ST[s].bg:"transparent",border:"none",cursor:"pointer",borderRadius:5,fontFamily:F}}><span style={{width:7,height:7,borderRadius:"50%",background:ST[s].color,flexShrink:0}}/><span style={{fontSize:12,color:o.status===s?ST[s].color:C.t2,fontWeight:o.status===s?700:500}}>{ST[s].label}</span>{o.status===s&&<span style={{marginLeft:"auto",fontSize:10,color:ST[s].color}}>✓</span>}</button>))}</div>)}</div>
     <div style={{fontSize:11,color:C.mu}}>{o.date}</div><div style={{display:"flex",gap:4}}>{next&&<Btn v="subtle" sz="sm" onClick={e=>{e.stopPropagation();onChange(o.id,{status:next});if(STATUS_NOTIFY[next])triggerNotify(o,next);}} style={{padding:"4px 8px",fontSize:11}}>→</Btn>}<Btn v="ghost" sz="sm" onClick={e=>{e.stopPropagation();startEdit(o);}} style={{padding:"4px 8px",fontSize:12}}>✎</Btn><Btn v="ghost" sz="sm" onClick={e=>{e.stopPropagation();setDel(o.id);}} style={{padding:"4px 8px",fontSize:12,color:C.acc}}>✕</Btn></div></div>{o.note&&<div style={{padding:"0 16px 10px",fontSize:11,color:C.mu}}>💬 {o.note}</div>}{isOpen&&(<div style={{padding:"0 16px 16px",borderTop:`1px solid ${C.bd}`,marginTop:4,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>ID</div><div style={{fontSize:13,fontWeight:800,color:C.tx,fontFamily:"monospace"}}>{makeId(o.customer,o.zip)}</div></div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>PLATFORM</div><PBadge p={o.platform}/></div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>DÁTUM</div><div style={{fontSize:13,color:C.tx}}>{o.date}</div></div><div style={{gridColumn:"1/-1",background:C.s2,borderRadius:8,padding:"12px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:8}}>ALKATRÉSZEK ({getParts(o).length} tétel · {totalQty(o)} db)</div>{getParts(o).map((p,pi)=>(<div key={pi} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderTop:pi>0?`1px solid ${C.bd}`:"none"}}><span style={{fontSize:11,color:C.mu,minWidth:20}}>{pi+1}.</span><span style={{flex:1,fontSize:13,color:C.tx}}>{p.name}</span><span style={{fontSize:12,fontWeight:700,color:C.acc,minWidth:40,textAlign:"right"}}>{p.qty} db</span>{p.allegroLink&&<a href={p.allegroLink} target="_blank" rel="noreferrer" style={{fontSize:10,color:C.blue,textDecoration:"none"}}>🔍</a>}</div>))}</div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>JÁRMŰ</div><div style={{fontSize:13,color:C.tx}}>{o.car}</div></div></div>)}</div>)})}</div>
-    <div style={{marginTop:8,fontSize:11,color:C.mu}}>Kattintson a státuszra a módosításhoz — bármely irányba.</div>
+    <div style={{marginTop:8,fontSize:11,color:C.mu}}>Kattintson a státuszra a módosításhoz - bármely irányba.</div>
     {statusPicker&&<div onClick={()=>setStatusPicker(null)} style={{position:"fixed",inset:0,zIndex:99}}/>}
 
       {notify&&(
@@ -935,7 +976,7 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
 
 function Krakow({orders,onChange}){
   const items=orders.filter(o=>o.status==="krakow");
-  return(<div><PH sub="Átvételre váró csomagok Krakkóban">Krakkói raktár</PH>{items.length===0?(<div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center"}}><div style={{fontSize:28,marginBottom:10}}>📦</div><div style={{color:C.mu,fontSize:13}}>Nincs csomag a raktárban.</div></div>):(<><div style={{background:C.purple+"10",border:`1px solid ${C.purple}22`,borderRadius:8,padding:"12px 16px",marginBottom:16}}><span style={{color:C.purple,fontWeight:700,fontSize:13}}>📦 {items.length} csomag vár a raktárban</span></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden",marginBottom:14}}>{items.map((o,i)=>(<div key={o.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<items.length-1?`1px solid ${C.bd}`:"none"}}><PBadge p={o.platform}/><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:C.tx}}>{o.customer}</div><div style={{fontSize:11,color:C.mu}}>{o.part} · {o.qty} db</div></div><Btn v="outline" sz="sm" onClick={()=>onChange(o.id,{status:"transit"})}>🚗 Úton van</Btn></div>))}</div><Btn full onClick={()=>items.forEach(o=>onChange(o.id,{status:"transit"}))}>🚗 Összes csomag — fuvar indítása</Btn></>)}</div>);
+  return(<div><PH sub="Átvételre váró csomagok Krakkóban">Krakkói raktár</PH>{items.length===0?(<div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center"}}><div style={{fontSize:28,marginBottom:10}}>📦</div><div style={{color:C.mu,fontSize:13}}>Nincs csomag a raktárban.</div></div>):(<><div style={{background:C.purple+"10",border:`1px solid ${C.purple}22`,borderRadius:8,padding:"12px 16px",marginBottom:16}}><span style={{color:C.purple,fontWeight:700,fontSize:13}}>📦 {items.length} csomag vár a raktárban</span></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden",marginBottom:14}}>{items.map((o,i)=>(<div key={o.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<items.length-1?`1px solid ${C.bd}`:"none"}}><PBadge p={o.platform}/><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:C.tx}}>{o.customer}</div><div style={{fontSize:11,color:C.mu}}>{o.part} · {o.qty} db</div></div><Btn v="outline" sz="sm" onClick={()=>onChange(o.id,{status:"transit"})}>🚗 Úton van</Btn></div>))}</div><Btn full onClick={()=>items.forEach(o=>onChange(o.id,{status:"transit"}))}>🚗 Összes csomag - fuvar indítása</Btn></>)}</div>);
 }
 
 function PriceCalculator(){
@@ -1021,8 +1062,8 @@ function PriceCalculator(){
   const statusCfg={
     idle:    {dot:C.mu,   text:"Kattintson az élő árfolyam letöltéséhez"},
     loading: {dot:C.amber,text:"Letöltés folyamatban..."},
-    live:    {dot:C.green,text:`Élő árfolyam — ${ts} · frankfurter.app`},
-    fallback:{dot:C.amber,text:`Beépített árfolyam — ${ts} · élő forrás nem elérhető`},
+    live:    {dot:C.green,text:`Élő árfolyam - ${ts} · frankfurter.app`},
+    fallback:{dot:C.amber,text:`Beépített árfolyam - ${ts} · élő forrás nem elérhető`},
     error:   {dot:C.red,  text:"Nem sikerült letölteni."},
   }[status]||{dot:C.mu,text:""};
 
@@ -1032,7 +1073,7 @@ function PriceCalculator(){
 
       <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:20,alignItems:"start"}}>
 
-        {/* ── LEFT: controls ── */}
+        {/* -- LEFT: controls -- */}
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
           {/* PLN input */}
@@ -1083,7 +1124,7 @@ function PriceCalculator(){
 
         </div>
 
-        {/* ── RIGHT: currency cards always visible ── */}
+        {/* -- RIGHT: currency cards always visible -- */}
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           {!hasRates&&(
             <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:32,textAlign:"center",marginBottom:4}}>
@@ -1099,7 +1140,7 @@ function PriceCalculator(){
             const base=plnVal*(eff||0);
             const effMup=effectiveMarkup(cur.code);
             const withMarkup=base*(1+effMup/100);
-            const rateDisplay=eff?(eff>=100?`1 PLN = ${eff.toFixed(1)} ${cur.code}`:eff>=1?`1 PLN = ${eff.toFixed(4)} ${cur.code}`:`1 PLN = ${eff.toFixed(6)} ${cur.code}`):"—";
+            const rateDisplay=eff?(eff>=100?`1 PLN = ${eff.toFixed(1)} ${cur.code}`:eff>=1?`1 PLN = ${eff.toFixed(4)} ${cur.code}`:`1 PLN = ${eff.toFixed(6)} ${cur.code}`):"-";
             const borderCol=isFixed?C.acc:cur.home?C.green:cur.accent;
             return(
               <div key={cur.code} style={{background:cur.home?C.green+"08":C.s1,border:`1px solid ${isFixed?C.acc+"55":cur.home?C.green+"30":C.bd}`,borderRadius:10,padding:16,borderLeft:`3px solid ${borderCol}`,transition:"all 0.2s"}}>
@@ -1121,7 +1162,7 @@ function PriceCalculator(){
                     {eff&&plnVal>0?(
                       <div style={{fontSize:22,fontWeight:800,color:cur.home?C.green:C.tx,letterSpacing:-0.5}}>{fmtAmt(cur.code,withMarkup,cur.decimals)}</div>
                     ):(
-                      <div style={{fontSize:16,fontWeight:700,color:C.mu}}>— {cur.code}</div>
+                      <div style={{fontSize:16,fontWeight:700,color:C.mu}}>- {cur.code}</div>
                     )}
                     {eff&&plnVal>0&&markup>0&&(
                       <div style={{fontSize:10,color:C.mu,marginTop:1}}>Alap: {fmtAmt(cur.code,base,cur.decimals)}</div>
@@ -1245,8 +1286,8 @@ function Templates(){
     <div>
       <PH sub="Szerkeszthető lengyel és magyar üzenet sablonok">Sablonok</PH>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-        <Section lang="pl" title="🇵🇱 Lengyel — eladóknak" items={plTpl}/>
-        <Section lang="hu" title="🇭🇺 Magyar — ügyfeleknek" items={huTpl}/>
+        <Section lang="pl" title="🇵🇱 Lengyel - eladóknak" items={plTpl}/>
+        <Section lang="hu" title="🇭🇺 Magyar - ügyfeleknek" items={huTpl}/>
       </div>
 
       {editing&&(
@@ -1269,7 +1310,7 @@ function Templates(){
   );
 }
 
-const BF={partName:"",serialNumber:"",serialNumberVerified:"",serialNumberWarning:"",serialNumberConfidence:"",car:"",condition:"Jó",price:"",estimatedPriceHUF:"",priceNote:"",contact:"",pickup:"",description:""};
+const BF={partName:"",category:"",_catParent:"",serialNumber:"",serialNumberVerified:"",serialNumberWarning:"",serialNumberConfidence:"",car:"",condition:"Jó",price:"",estimatedPriceHUF:"",priceNote:"",contact:"",pickup:"",description:""};
 function CatalogueManager({user}){
   const[items,setItems]=useState([]);
   const[learned,setLearned]=useState({});
@@ -1333,7 +1374,7 @@ function CatalogueManager({user}){
       const knownSerials=Object.entries(learned).slice(0,20).map(([s,v])=>`${s} = ${v.car} (${v.partName})`).join("\n");
       const msgContent=[
         ...raw.map(b64=>({type:"image",source:{type:"base64",media_type:b64.split(";")[0].split(":")[1],data:b64.split(",")[1]}})),
-        {type:"text",text:`You are an expert auto parts identification specialist.\n\nSTEP 1 — READ SERIAL:\n- Read every character digit by digit exactly as stamped/engraved/printed\n- Common misreads to avoid: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z\n- Note any ambiguous characters in serialNumberWarning\n\nSTEP 2 — LOOK UP SERIAL IN YOUR KNOWLEDGE BASE:\n- Search your training data for this exact OEM/part number\n- What part does this number correspond to? (manufacturer catalog knowledge)\n- Does it match what you visually see in the image? Flag any mismatch in serialNumberVerified\n- What is the retail/wholesale price range for this part in PLN?\n\nSTEP 3 — IDENTIFY CAR FROM SERIAL (OEM prefix knowledge):\n- Mercedes-Benz: A + 3-digit chassis (A205=C-Class W205 2014-2021, A213=E-Class W213 2016+, A166=ML/GL W166, A176=A-Class W176, A117=CLA, A172=SLK)\n- VW/Skoda/Seat: 1K=Golf V/VI MkV, 5K=Golf VI, 5Q=Golf VII, 8P=Audi A3 8P, 8V=Audi A3 8V, 3C=Passat B6\n- BMW: 31xx=E90/E91 3-series, 34xx=brakes, prefix 51=body, 3310=steering; generation from last 2 digits of number\n- Opel: 13xxx, 90xxx series\n- Ford: 1xxx, 2xxx series\n- Use prefix + your knowledge to give FULL: Make + Model + Generation code + Year range\n- e.g. Mercedes-Benz C-Class W205 2014-2021, BMW 3 Series E90 2005-2012\n- NEVER just a brand name — always include model + generation\n- If truly unknown after lookup: null\n${knownSerials?"\\nSTEP 4 — CHECK AGAINST YOUR CORRECTIONS:\\n"+knownSerials:""}\n\nRespond ONLY with valid JSON:\n{"partName":"specific Hungarian part name","serialNumber":"exact digits or null","serialNumberVerified":"cross-reference result","serialNumberWarning":"ambiguous chars or null","serialNumberConfidence":"high/medium/low","car":"make model year or null","condition":"Jó","estimatedPricePLN":0,"estimatedPriceHUF":0,"priceNote":"OEM vs aftermarket range","description":"2-3 sentence Hungarian description"}`}
+        {type:"text",text:`You are an expert auto parts identification specialist.\n\nSTEP 1 - READ SERIAL:\n- Read every character digit by digit exactly as stamped/engraved/printed\n- Common misreads to avoid: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z\n- Note any ambiguous characters in serialNumberWarning\n\nSTEP 2 - LOOK UP SERIAL IN YOUR KNOWLEDGE BASE:\n- Search your training data for this exact OEM/part number\n- What part does this number correspond to? (manufacturer catalog knowledge)\n- Does it match what you visually see in the image? Flag any mismatch in serialNumberVerified\n- What is the retail/wholesale price range for this part in PLN?\n\nSTEP 3 - IDENTIFY CAR FROM SERIAL (OEM prefix knowledge):\n- Mercedes-Benz: A + 3-digit chassis (A205=C-Class W205 2014-2021, A213=E-Class W213 2016+, A166=ML/GL W166, A176=A-Class W176, A117=CLA, A172=SLK)\n- VW/Skoda/Seat: 1K=Golf V/VI MkV, 5K=Golf VI, 5Q=Golf VII, 8P=Audi A3 8P, 8V=Audi A3 8V, 3C=Passat B6\n- BMW: 31xx=E90/E91 3-series, 34xx=brakes, prefix 51=body, 3310=steering; generation from last 2 digits of number\n- Opel: 13xxx, 90xxx series\n- Ford: 1xxx, 2xxx series\n- Use prefix + your knowledge to give FULL: Make + Model + Generation code + Year range\n- e.g. Mercedes-Benz C-Class W205 2014-2021, BMW 3 Series E90 2005-2012\n- NEVER just a brand name - always include model + generation\n- If truly unknown after lookup: null\n${knownSerials?"\\nSTEP 4 - CHECK AGAINST YOUR CORRECTIONS:\\n"+knownSerials:""}\n\nRespond ONLY with valid JSON:\n{"partName":"specific Hungarian part name","serialNumber":"exact digits or null","serialNumberVerified":"cross-reference result","serialNumberWarning":"ambiguous chars or null","serialNumberConfidence":"high/medium/low","car":"make model year or null","condition":"Jó","estimatedPricePLN":0,"estimatedPriceHUF":0,"priceNote":"OEM vs aftermarket range","description":"2-3 sentence Hungarian description"}`}
       ];
       const txt=await ai([{role:"user",content:msgContent}]);
       const d=JSON.parse(txt.replace(/```json|```/g,"").trim());
@@ -1364,8 +1405,8 @@ function CatalogueManager({user}){
       if(!ok)console.warn("Image save may have failed");
     }
     // Save metadata without images
-    const item={id,...form,images,publishedBy:user?.name||"?",publishedAt:new Date().toISOString(),sold:false};
-    const meta={id,...form,publishedBy:user?.name||"?",publishedAt:new Date().toISOString(),sold:false};
+    const{_catParent,...formClean}=form;const item={id,...formClean,images,publishedBy:user?.name||"?",publishedAt:new Date().toISOString(),sold:false};
+    const meta={id,...formClean,publishedBy:user?.name||"?",publishedAt:new Date().toISOString(),sold:false};
     const metaList=[meta,...items.map(i=>({...i,images:undefined}))];
     try{
       await db.set("catalogue_items",metaList,true);
@@ -1414,19 +1455,33 @@ function CatalogueManager({user}){
                   ))}
                   <div style={{height:72,width:72,border:`2px dashed ${C.bd2}`,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:C.mu,fontSize:22}}>+</div>
                 </div>
-                <div style={{fontSize:11,color:analyzing?C.amber:C.green,fontWeight:600}}>{analyzing?"⟳ AI elemzés folyamatban...":"✓ Feltöltve — szerkeszd az adatokat"}</div>
+                <div style={{fontSize:11,color:analyzing?C.amber:C.green,fontWeight:600}}>{analyzing?"⟳ AI elemzés folyamatban...":"✓ Feltöltve - szerkeszd az adatokat"}</div>
               </div>
             ):(
               <div>
                 <div style={{fontSize:24,marginBottom:6}}>📷</div>
-                <div style={{fontSize:13,color:C.mu}}>Kattints a képek feltöltéséhez — AI automatikusan felismeri az alkatrészt</div>
+                <div style={{fontSize:13,color:C.mu}}>Kattints a képek feltöltéséhez - AI automatikusan felismeri az alkatrészt</div>
               </div>
             )}
           </div>
 
           {/* Form fields */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-            <Field label="Alkatrész neve" {...f("partName")} placeholder="pl. Első féktárcsa"/>
+            <Field label="Alkatrész neve" {...f("partName")} placeholder="pl. Első féktárcsa"/><Field label="Kategória">
+  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+    <select value={form._catParent||""} onChange={e=>{setForm(x=>({...x,_catParent:e.target.value,category:""}));}} style={{...inp,fontSize:12}}>
+      <option value="">-- Főkategória --</option>
+      {PART_CAT_TREE.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+    </select>
+    {form._catParent&&(
+      <select value={form.category||""} onChange={e=>setField("category",e.target.value)} style={{...inp,fontSize:12}}>
+        <option value="">-- Alkategória --</option>
+        {(PART_CAT_TREE.find(c=>c.id===form._catParent)?.sub||[]).map(s=><option key={s} value={s}>{s}</option>)}
+      </select>
+    )}
+    {form.category&&<div style={{fontSize:10,color:C.green,marginTop:2}}>✓ {form.category}</div>}
+  </div>
+</Field>
             <Field label="Sorozatszám / OEM" {...f("serialNumber")} placeholder="pl. 1K0615301AA"/>
             {form.serialNumberWarning&&<div style={{gridColumn:"1/-1",background:C.amber+"10",border:`1px solid ${C.amber}25`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.amber}}>⚠ {form.serialNumberWarning}</div>}
             {form.serialNumberVerified&&<div style={{gridColumn:"1/-1",background:C.green+"08",border:`1px solid ${C.green}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.t2}}>✓ Ellenőrzés: {form.serialNumberVerified}</div>}
@@ -1446,7 +1501,7 @@ function CatalogueManager({user}){
             <Field label="Ár (Ft)" {...f("price")} placeholder="pl. 25000"/>
             {form.estimatedPriceHUF&&!form.price&&(
               <div style={{gridColumn:"1/-1",background:C.blue+"08",border:`1px solid ${C.blue}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.t2,display:"flex",alignItems:"center",gap:8}}>
-                <span>💡 AI árbecslés: ~{Number(form.estimatedPriceHUF).toLocaleString("hu")} Ft{form.priceNote?" — "+form.priceNote:""}</span>
+                <span>💡 AI árbecslés: ~{Number(form.estimatedPriceHUF).toLocaleString("hu")} Ft{form.priceNote?" - "+form.priceNote:""}</span>
                 <button onClick={()=>setField("price",""+form.estimatedPriceHUF)} style={{marginLeft:"auto",background:C.blue+"20",color:C.blue,border:"none",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:F}}>Használ</button>
               </div>
             )}
@@ -1480,7 +1535,7 @@ function CatalogueManager({user}){
               {(!item.images||item.images.length===0)&&<div style={{width:52,height:52,background:C.s3,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🔩</div>}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:3}}>
-                  <span style={{fontSize:14,fontWeight:700,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.partName}</span>
+                  <span style={{fontSize:14,fontWeight:700,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.partName}</span>{item.category&&<span style={{fontSize:9,background:C.acc+"15",color:C.acc,borderRadius:4,padding:"1px 6px",fontWeight:700,flexShrink:0}}>{item.category}</span>}
                   {item.sold&&<span style={{background:C.mu+"20",color:C.mu,borderRadius:4,padding:"1px 6px",fontSize:9,fontWeight:800,flexShrink:0}}>ELADVA</span>}
                   <span style={{background:condColor(item.condition)+"20",color:condColor(item.condition),borderRadius:4,padding:"1px 6px",fontSize:9,fontWeight:700,flexShrink:0}}>{item.condition}</span>
                 </div>
@@ -1490,8 +1545,8 @@ function CatalogueManager({user}){
                 </div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
-                <div style={{fontSize:16,fontWeight:800,color:C.acc}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":"—"}</div>
-                <div style={{fontSize:10,color:C.mu}}>📍 {item.pickup||"—"}</div>
+                <div style={{fontSize:16,fontWeight:800,color:C.acc}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":"-"}</div>
+                <div style={{fontSize:10,color:C.mu}}>📍 {item.pickup||"-"}</div>
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0}}>
                 <Btn v="outline" sz="sm" onClick={e=>{e.stopPropagation();toggleSold(item.id);}}>{item.sold?"Aktív":"Eladva"}</Btn>
@@ -1507,7 +1562,7 @@ function CatalogueManager({user}){
                   </div>
                 )}
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
-                  {[["Jármű",item.car||"—"],["Cikkszám",item.serialNumber||"—"],["Állapot",item.condition],["Ár",item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":"—"],["Elérhetőség",item.contact||"—"],["Átvétel",item.pickup||"—"]].map(([k,v])=>(
+                  {[["Kategória",item.category||"-"],["Jármű",item.car||"-"],["Cikkszám",item.serialNumber||"-"],["Állapot",item.condition],["Ár",item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":"-"],["Elérhetőség",item.contact||"-"],["Átvétel",item.pickup||"-"]].map(([k,v])=>(
                     <div key={k} style={{background:C.s1,borderRadius:8,padding:"10px 12px"}}>
                       <div style={{fontSize:9,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:3}}>{k.toUpperCase()}</div>
                       <div style={{fontSize:12,color:C.tx,fontWeight:600}}>{v}</div>
@@ -1528,9 +1583,14 @@ function PublicCatalogue({onBack,onAdmin}){
   const[items,setItems]=useState([]);
   const[ld,setLd]=useState(true);
   const[search,setSearch]=useState("");
-  const[cond,setCond]=useState("Összes");
+  const[cond,setCond]=useState("all");
+  const[cat,setCat]=useState("all");
+  const[make,setMake]=useState("all");
   const[sel,setSel]=useState(null);
   const[imgIdx,setImgIdx]=useState(0);
+  const[lang,switchLang,t]=useLang();
+  const[theme,setTheme]=useState(_theme);
+  const isDark=theme==="dark";
 
   useEffect(()=>{
     db.get("catalogue_items",true)
@@ -1540,111 +1600,211 @@ function PublicCatalogue({onBack,onAdmin}){
           const imgs=await db.get("catalogue_img_"+item.id,true);
           return {...item,images:Array.isArray(imgs)?imgs:[]};
         }));
-        setItems(withImages);
-        setLd(false);
+        console.log("[Autorra] Loaded",withImages.length,"items from storage");setItems(withImages);setLd(false);
       })
-      .catch(()=>setLd(false));
+      .catch(e=>{console.error("[Autorra] Load error:",e);setItems([]);setLd(false);});
   },[]);
 
   const shown=items.filter(i=>{
-    if(cond!=="Összes"&&i.condition!==cond)return false;
+    if(!i||i.sold)return false;
+    if(cond!=="all"&&i.condition!==cond)return false;
+    if(cat!=="all"){
+      // cat could be a parent id (e.g. "Fékrendszer") or a subcategory name (e.g. "Féktárcsa")
+      const parentTree=PART_CAT_TREE.find(t=>t.id===cat);
+      if(parentTree){
+        // Parent selected: show all items in this group
+        const valid=[parentTree.label,...parentTree.sub];
+        if(!valid.includes(i.category||""))return false;
+      } else {
+        // Subcategory selected: exact match
+        if((i.category||"")!==cat)return false;
+      }
+    }
+    if(make!=="all"&&!(i.car||"").toLowerCase().includes(make.toLowerCase()))return false;
     if(!search)return true;
-    return [i.partName,i.car||"",i.serialNumber||"",i.description||""].join(" ").toLowerCase().includes(search.toLowerCase());
+    return [i.partName,i.car||"",i.serialNumber||"",i.description||"",i.category||""].join(" ").toLowerCase().includes(search.toLowerCase());
   });
+  console.log("[Autorra] items total:",items.length,"shown:",shown.length,"cat:",cat,"cond:",cond);
 
-  const COND_C2={Jó:"#16a34a",Bontott:"#ca8a04",Hibás:"#dc2626",Felújított:"#2563eb"};
+  const bg=isDark?"#0c0c0f":"#f5f5f7";
+  const card=isDark?"#111116":"#ffffff";
+  const border=isDark?"#22222c":"#e5e5ea";
+  const tx=isDark?"#f0f0f8":"#111111";
+  const mu=isDark?"#606070":"#888888";
+  const surf=isDark?"#16161d":"#fafafa";
+  const COND_C2={Új:"#16a34a",Kiváló:"#22c55e",Jó:"#2563eb",Közepes:"#d97706",Hibás:"#dc2626"};
+  const condLabel={Új:"New",Kiváló:"Excellent",Jó:"Good",Közepes:"Fair",Hibás:"For parts"};
+  const activeFilters=[cond!=="all",cat!=="all",make!=="all",search].filter(Boolean).length;
 
   return(
-    <div style={{minHeight:"100vh",background:"#f5f5f7",fontFamily:F}}>
-      {/* Header */}
-      <div style={{background:"#fff",borderBottom:"1px solid #e5e5e7",padding:"14px 24px",display:"flex",alignItems:"center",gap:16,position:"sticky",top:0,zIndex:10}}>
-        <button onClick={onBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"#666",fontSize:13,fontFamily:F,display:"flex",alignItems:"center",gap:4}}>← Vissza</button><div style={{fontWeight:800,fontSize:16,letterSpacing:-0.3}}>auto<span style={{color:"#dc2626"}}>rra</span></div>
-        <div style={{flex:1,maxWidth:480}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍  Keresés alkatrész, jármű, cikkszám alapján..." style={{width:"100%",padding:"8px 14px",borderRadius:20,border:"1.5px solid #e0e0e0",fontSize:13,fontFamily:F,outline:"none",background:"#fafafa"}}/>
+    <div style={{minHeight:"100vh",background:bg,fontFamily:F,color:tx}}>
+      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+      <style>{"*{margin:0;padding:0;box-sizing:border-box}html,body{background:"+bg+";height:100%}"}</style>
+
+      {/* -- Sticky header -- */}
+      <header style={{background:isDark?"rgba(12,12,15,0.95)":"rgba(255,255,255,0.95)",backdropFilter:"blur(12px)",borderBottom:`1px solid ${border}`,position:"sticky",top:0,zIndex:50,padding:"0 24px"}}>
+        <div style={{maxWidth:1200,margin:"0 auto",height:58,display:"flex",alignItems:"center",gap:16}}>
+          <button onClick={onBack} style={{background:"transparent",border:"none",cursor:"pointer",color:mu,fontSize:13,fontFamily:F,padding:"4px 8px",borderRadius:6,display:"flex",alignItems:"center",gap:4}}>← {t.back.replace("← ","")}</button>
+          <div style={{fontSize:18,fontWeight:900,letterSpacing:-0.5,color:tx}}>auto<span style={{color:"#dc2626"}}>rra</span></div>
+
+          <div style={{display:"flex",gap:8,alignItems:"center",marginLeft:"auto"}}>
+            <button onClick={()=>switchLang(lang==="hu"?"en":"hu")} style={{background:surf,border:`1px solid ${border}`,borderRadius:8,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer",color:mu,fontFamily:F,letterSpacing:0.5}}>{lang==="hu"?"EN":"HU"}</button>
+            <button onClick={()=>{const t=theme==="light"?"dark":"light";applyTheme(t);setTheme(t);}} style={{background:surf,border:`1px solid ${border}`,borderRadius:8,padding:"5px 10px",fontSize:13,cursor:"pointer",color:mu,fontFamily:F}}>{theme==="light"?"🌙":"☀"}</button>
+            {onAdmin&&<button onClick={onAdmin} style={{background:"transparent",border:`1px solid ${border}`,borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:600,cursor:"pointer",color:mu,fontFamily:F}}>Login</button>}
+          </div>
         </div>
-        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          {onAdmin&&<button onClick={onAdmin} style={{padding:"5px 12px",borderRadius:15,border:"1.5px solid #e0e0e0",background:"transparent",color:"#888",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:F,marginRight:4}}>Admin</button>}{["Összes",...CONDITIONS].map(c=>(
-            <button key={c} onClick={()=>setCond(c)} style={{padding:"5px 12px",borderRadius:15,border:"1.5px solid",borderColor:cond===c?"#dc2626":"#e0e0e0",background:cond===c?"#dc2626":"#fff",color:cond===c?"#fff":"#555",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:F}}>{c}</button>
-          ))}
-        </div>
-      </div>
+      </header>
 
       <div style={{maxWidth:1200,margin:"0 auto",padding:"24px 20px"}}>
+
+        {/* -- Filter bar -- */}
+        <div style={{marginBottom:20}}>
+          {/* Search + condition + make row */}
+          <div style={{display:"flex",alignItems:"stretch",height:44,border:`1px solid ${border}`,borderBottom:0}}>
+            <div style={{position:"relative",flex:"2 1 200px",borderRight:`1px solid ${border}`}}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t.search} style={{width:"100%",height:"100%",padding:"0 12px 0 30px",border:"none",background:surf,color:tx,fontSize:13,fontFamily:F,outline:"none"}}/>
+              <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:13,color:mu,pointerEvents:"none"}}>&#8981;</span>
+              {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:mu,cursor:"pointer",fontSize:12,fontFamily:F,padding:0}}>&#x2715;</button>}
+            </div>
+            <select value={cond} onChange={e=>setCond(e.target.value)} style={{flex:"1 1 120px",padding:"0 10px",border:"none",borderRight:`1px solid ${border}`,background:cond!=="all"?"#dc262606":surf,color:cond!=="all"?"#dc2626":isDark?"#bbb":"#333",fontSize:12,fontFamily:F,fontWeight:600,cursor:"pointer",outline:"none"}}>
+              <option value="all">{t.allCond}</option>
+              {CONDITIONS.map(c=><option key={c} value={c}>{lang==="en"?(condLabel[c]||c):c}</option>)}
+            </select>
+            <select value={make} onChange={e=>setMake(e.target.value)} style={{flex:"1 1 130px",padding:"0 10px",border:"none",borderRight:activeFilters>0?`1px solid ${border}`:"none",background:make!=="all"?"#dc262606":surf,color:make!=="all"?"#dc2626":isDark?"#bbb":"#333",fontSize:12,fontFamily:F,fontWeight:600,cursor:"pointer",outline:"none"}}>
+              <option value="all">{t.allMakes}</option>
+              {MAKES.map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
+            {activeFilters>0&&<button onClick={()=>{setCond("all");setCat("all");setMake("all");setSearch("");}} style={{flexShrink:0,padding:"0 14px",border:"none",background:"transparent",color:"#dc2626",fontSize:11,fontFamily:F,cursor:"pointer",fontWeight:700}}>Clear</button>}
+          </div>
+
+          {/* Category browser — parent + subcategory two-level panel */}
+          <div style={{display:"flex",border:`1px solid ${border}`,borderBottom:`2px solid ${isDark?"#1e1e1e":"#e0e0e0"}`}}>
+            {/* Left: parent categories */}
+            <div style={{width:170,flexShrink:0,borderRight:`1px solid ${border}`}}>
+              {[{id:"all",label:lang==="en"?"All parts":"Minden alkatrész"},...PART_CAT_TREE].map(c=>{
+                const isActive=cat===c.id||(cat!=="all"&&c.id!=="all"&&PART_CAT_TREE.find(t=>t.id===c.id)?.sub?.some(s=>cat===s));
+                return(
+                  <button key={c.id} onClick={()=>setCat(c.id)} style={{display:"block",width:"100%",textAlign:"left",padding:"9px 14px",border:"none",borderBottom:`1px solid ${border}`,background:isActive?"#dc262610":"transparent",color:isActive?"#dc2626":isDark?"#aaa":"#444",fontSize:12,fontWeight:isActive?700:400,cursor:"pointer",fontFamily:F,letterSpacing:0.1}}>
+                    {c.label}
+                    {c.sub&&<span style={{float:"right",opacity:0.4,fontSize:10}}>{c.sub.length}</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Right: subcategories for selected parent */}
+            <div style={{flex:1,padding:"8px 0",display:"flex",flexWrap:"wrap",alignContent:"flex-start",gap:0}}>
+              {cat==="all"?(
+                <div style={{padding:"12px 16px",fontSize:12,color:mu,display:"flex",alignItems:"center"}}>
+                  {lang==="en"?"Select a category to filter subcategories":"Válassz kategóriát az alkategóriák szűréséhez"}
+                </div>
+              ):(()=>{
+                const tree=PART_CAT_TREE.find(t=>t.id===cat);
+                if(!tree)return null;
+                return tree.sub.map(s=>(
+                  <button key={s} onClick={()=>setCat(s===cat?cat:s)} style={{padding:"7px 14px",margin:"3px 4px",border:`1px solid ${s===cat?"#dc2626":border}`,background:s===cat?"#dc2626":"transparent",color:s===cat?"#fff":isDark?"#bbb":"#444",fontSize:11,fontFamily:F,cursor:"pointer",borderRadius:3,fontWeight:s===cat?700:400,transition:"all 0.1s"}}>{s}</button>
+                ));
+              })()}
+            </div>
+          </div>
+
+          {/* Result count */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"5px 12px",background:isDark?"#0d0d12":"#f5f5f8",border:`1px solid ${border}`,borderTop:0}}>
+            <span style={{fontSize:10,color:mu,fontWeight:500,letterSpacing:0.3}}>{shown.length} {lang==="en"?"RESULTS":"TALÁLAT"}</span>
+            {activeFilters>0&&<span style={{fontSize:10,color:"#dc2626",fontWeight:700,letterSpacing:0.3}}>{activeFilters} {lang==="en"?"FILTER":"SZŰRŐ"}</span>}
+          </div>
+        </div>
+
+        {/* -- Loading -- */}
         {ld&&(
-          <div style={{textAlign:"center",padding:64,color:"#999"}}>
-            <div style={{fontSize:32,marginBottom:12}}>⟳</div>
-            <div style={{fontSize:14}}>Betöltés...</div>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:80,color:mu}}>
+            <div style={{width:36,height:36,border:`3px solid ${border}`,borderTopColor:"#dc2626",borderRadius:"50%",animation:"spin 0.8s linear infinite",marginBottom:16}}/>
+            <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+            <div style={{fontSize:14}}>{t.loading}</div>
           </div>
         )}
+
+        {/* -- Empty state -- */}
         {!ld&&shown.length===0&&(
-          <div style={{textAlign:"center",padding:64,color:"#999"}}>
-            <div style={{fontSize:40,marginBottom:12}}>🔩</div>
-            <div style={{fontSize:15,fontWeight:600,color:"#444",marginBottom:6}}>{search||cond!=="Összes"?"Nincs találat":"Egyelőre nincs elérhető alkatrész"}</div>
-            {(search||cond!=="Összes")&&<button onClick={()=>{setSearch("");setCond("Összes");}} style={{marginTop:12,background:"#dc2626",color:"#fff",border:"none",borderRadius:7,padding:"8px 18px",fontSize:13,cursor:"pointer",fontFamily:F}}>Szűrők törlése</button>}
+          <div style={{textAlign:"center",padding:"80px 20px",color:mu}}>
+            <div style={{fontSize:56,marginBottom:16,opacity:0.3}}>🔩</div>
+            <div style={{fontSize:18,fontWeight:700,color:tx,marginBottom:8}}>{t.noResults}</div>
+            {activeFilters>0&&<button onClick={()=>{setCond("all");setCat("all");setMake("all");setSearch("");}} style={{marginTop:16,background:"#dc2626",color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>{t.clearFilters}</button>}
           </div>
         )}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:18}}>
-          {shown.map(item=>(
-            <div key={item.id} onClick={()=>{setSel(item);setImgIdx(0);}} style={{background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.07)",cursor:"pointer",transition:"transform 0.15s,box-shadow 0.15s"}}
-              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.12)";}}
-              onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.07)";}}>
-              <div style={{height:200,background:"#f0f0f0",position:"relative",overflow:"hidden"}}>
-                {item.images?.[0]?<img src={item.images[0]} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",fontSize:48,color:"#ccc"}}>🔩</div>}
-                {(item.images?.length||0)>1&&<div style={{position:"absolute",bottom:8,right:8,background:"rgba(0,0,0,0.55)",color:"#fff",borderRadius:4,padding:"2px 7px",fontSize:10,fontWeight:700}}>+{item.images.length-1}</div>}
-                <span style={{position:"absolute",top:10,left:10,background:COND_C2[item.condition]||"#666",color:"#fff",borderRadius:5,padding:"3px 9px",fontSize:10,fontWeight:800}}>{item.condition}</span>
-              </div>
-              <div style={{padding:"14px 16px"}}>
-                <div style={{fontSize:15,fontWeight:800,color:"#111",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.partName}</div>
-                {item.car&&<div style={{fontSize:11,color:"#888",marginBottom:2}}>🚗 {item.car}</div>}
-                {item.serialNumber&&<div style={{fontSize:10,color:"#aaa",fontFamily:"monospace",marginBottom:8}}># {item.serialNumber}</div>}
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
-                  <span style={{fontSize:18,fontWeight:800,color:"#dc2626"}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":"Ár kérdezzen"}</span>
-                  <span style={{fontSize:11,color:"#aaa"}}>📍 {item.pickup||"—"}</span>
+
+        {/* -- Grid -- */}
+        {!ld&&shown.length>0&&(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20}}>
+            {shown.map(item=>(
+              <div key={item.id} onClick={()=>{setSel(item);setImgIdx(0);}} style={{background:card,borderRadius:16,overflow:"hidden",border:`1px solid ${border}`,cursor:"pointer",transition:"transform 0.2s,box-shadow 0.2s,border-color 0.2s"}}
+                onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow=isDark?"0 12px 32px rgba(0,0,0,0.5)":"0 12px 32px rgba(0,0,0,0.1)";e.currentTarget.style.borderColor="#dc2626"+"44";}}
+                onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";e.currentTarget.style.borderColor=border;}}>
+                {/* Image */}
+                <div style={{height:200,background:isDark?"#1a1a22":"#f0f0f5",position:"relative",overflow:"hidden"}}>
+                  {item.images?.[0]?<img src={item.images[0]} alt={item.partName} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",fontSize:52,opacity:0.2}}>🔩</div>}
+                  {(item.images?.length||0)>1&&<div style={{position:"absolute",bottom:10,right:10,background:"rgba(0,0,0,0.6)",color:"#fff",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700}}>+{item.images.length-1}</div>}
+                  <div style={{position:"absolute",top:10,left:10,display:"flex",gap:6}}>
+                    <span style={{background:COND_C2[item.condition]||"#888",color:"#fff",borderRadius:6,padding:"3px 9px",fontSize:10,fontWeight:800}}>{lang==="en"?(condLabel[item.condition]||item.condition):item.condition}</span>
+                  </div>
+                  {item.category&&<div style={{position:"absolute",bottom:10,left:10,background:"rgba(0,0,0,0.55)",color:"#fff",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:600}}>{item.category}</div>}
+                </div>
+                {/* Info */}
+                <div style={{padding:"16px 16px 18px"}}>
+                  <div style={{fontSize:15,fontWeight:800,color:tx,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.2}}>{item.partName}</div>
+                  {item.car&&<div style={{fontSize:12,color:mu,marginBottom:3}}>{item.car}</div>}
+                  {item.serialNumber&&<div style={{fontSize:10,color:mu,fontFamily:"monospace",marginBottom:10,opacity:0.7}}>#{item.serialNumber}</div>}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginTop:8,borderTop:`1px solid ${border}`,paddingTop:12}}>
+                    <div style={{fontSize:20,fontWeight:900,color:"#dc2626",letterSpacing:-0.5}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
+                    <div style={{fontSize:11,color:mu,textAlign:"right"}}>{item.pickup||"-"}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Detail modal */}
+      {/* -- Detail modal -- */}
       {sel&&(
-        <div onClick={()=>setSel(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.72)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:18,width:"100%",maxWidth:500,maxHeight:"92vh",overflowY:"auto"}}>
+        <div onClick={()=>setSel(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16,backdropFilter:"blur(4px)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:card,borderRadius:20,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto",border:`1px solid ${border}`}}>
+            {/* Images */}
             {(sel.images?.length||0)>0&&(
-              <div style={{position:"relative",background:"#f0f0f0",height:260,overflow:"hidden",borderRadius:"18px 18px 0 0"}}>
+              <div style={{position:"relative",height:280,background:isDark?"#1a1a22":"#f0f0f5",borderRadius:"20px 20px 0 0",overflow:"hidden"}}>
                 <img src={sel.images[imgIdx]} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                 {sel.images.length>1&&(
                   <>
-                    <button onClick={()=>setImgIdx(i=>(i-1+sel.images.length)%sel.images.length)} style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.45)",color:"#fff",border:"none",borderRadius:"50%",width:34,height:34,cursor:"pointer",fontSize:18,fontFamily:F}}>‹</button>
-                    <button onClick={()=>setImgIdx(i=>(i+1)%sel.images.length)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.45)",color:"#fff",border:"none",borderRadius:"50%",width:34,height:34,cursor:"pointer",fontSize:18,fontFamily:F}}>›</button>
-                    <div style={{position:"absolute",bottom:10,left:"50%",transform:"translateX(-50%)",display:"flex",gap:5}}>
-                      {sel.images.map((_,i)=><div key={i} onClick={()=>setImgIdx(i)} style={{width:7,height:7,borderRadius:"50%",background:i===imgIdx?"#fff":"rgba(255,255,255,0.4)",cursor:"pointer"}}/>)}
+                    <button onClick={e=>{e.stopPropagation();setImgIdx(i=>(i-1+sel.images.length)%sel.images.length);}} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.5)",color:"#fff",border:"none",borderRadius:"50%",width:36,height:36,cursor:"pointer",fontSize:18,fontFamily:F}}>‹</button>
+                    <button onClick={e=>{e.stopPropagation();setImgIdx(i=>(i+1)%sel.images.length);}} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.5)",color:"#fff",border:"none",borderRadius:"50%",width:36,height:36,cursor:"pointer",fontSize:18,fontFamily:F}}>›</button>
+                    <div style={{position:"absolute",bottom:12,left:"50%",transform:"translateX(-50%)",display:"flex",gap:5}}>
+                      {sel.images.map((_,i)=><div key={i} onClick={e=>{e.stopPropagation();setImgIdx(i);}} style={{width:7,height:7,borderRadius:"50%",background:i===imgIdx?"#fff":"rgba(255,255,255,0.4)",cursor:"pointer"}}/>)}
                     </div>
                   </>
                 )}
+                <button onClick={()=>setSel(null)} style={{position:"absolute",top:12,right:12,background:"rgba(0,0,0,0.5)",color:"#fff",border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:16,fontFamily:F}}>✕</button>
+                <span style={{position:"absolute",top:12,left:12,background:COND_C2[sel.condition]||"#888",color:"#fff",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:800}}>{lang==="en"?(condLabel[sel.condition]||sel.condition):sel.condition}</span>
               </div>
             )}
-            <div style={{padding:24}}>
+            {/* Content */}
+            <div style={{padding:"24px 24px 28px"}}>
+              {sel.category&&<div style={{fontSize:11,fontWeight:700,color:"#dc2626",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>{sel.category}</div>}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-                <div>
-                  <h2 style={{fontSize:20,fontWeight:800,color:"#111",margin:"0 0 4px"}}>{sel.partName}</h2>
-                  {sel.car&&<div style={{fontSize:13,color:"#888"}}>🚗 {sel.car}</div>}
+                <h2 style={{fontSize:22,fontWeight:900,color:tx,lineHeight:1.2,flex:1,marginRight:12}}>{sel.partName}</h2>
+              </div>
+              {sel.car&&<div style={{fontSize:13,color:mu,marginBottom:10}}><strong style={{color:tx}}>{sel.car}</strong></div>}
+              {sel.serialNumber&&<div style={{background:isDark?"#1a1a22":"#f4f4f8",borderRadius:8,padding:"8px 14px",fontSize:12,fontFamily:"monospace",color:mu,marginBottom:14,display:"flex",gap:8,alignItems:"center"}}><span style={{opacity:0.6}}>#</span>{sel.serialNumber}</div>}
+              {sel.description&&<p style={{fontSize:14,color:isDark?"#c8c8d8":"#444",lineHeight:1.7,marginBottom:18}}>{sel.description}</p>}
+              <div style={{borderTop:`1px solid ${border}`,paddingTop:18,marginBottom:18}}>
+                <div style={{fontSize:28,fontWeight:900,color:"#dc2626",letterSpacing:-0.5,marginBottom:10}}>{sel.price?parseInt(sel.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
+                {sel.pickup&&<div style={{fontSize:13,color:mu,marginBottom:4}}>{t.pickup}: <strong style={{color:tx}}>{sel.pickup}</strong></div>}
+                {sel.contact&&<div style={{fontSize:13,color:mu}}>{t.contact}: <strong style={{color:tx}}>{sel.contact}</strong></div>}
+              </div>
+              {sel.contact&&(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <a href={`tel:${sel.contact}`} style={{background:"#dc2626",color:"#fff",borderRadius:10,padding:"13px 0",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"block"}}>{t.call}</a>
+                  <a href={`https://wa.me/${(sel.contact||"").replace(/\D/g,"")}`} target="_blank" rel="noreferrer" style={{background:"#16a34a",color:"#fff",borderRadius:10,padding:"13px 0",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"block"}}>{t.whatsapp}</a>
                 </div>
-                <span style={{background:COND_C2[sel.condition]||"#666",color:"#fff",borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:800,flexShrink:0,marginLeft:12}}>{sel.condition}</span>
-              </div>
-              {sel.serialNumber&&<div style={{background:"#f4f4f6",borderRadius:8,padding:"9px 14px",fontSize:13,fontFamily:"monospace",color:"#555",marginBottom:14}}>Cikkszám: {sel.serialNumber}</div>}
-              {sel.description&&<p style={{fontSize:13,color:"#555",lineHeight:1.7,margin:"0 0 16px"}}>{sel.description}</p>}
-              <div style={{borderTop:"1px solid #eee",paddingTop:16,marginBottom:16}}>
-                <div style={{fontSize:24,fontWeight:800,color:"#dc2626",marginBottom:8}}>{sel.price?parseInt(sel.price||0).toLocaleString("hu")+" Ft":"Ár: kérdezzen"}</div>
-                <div style={{fontSize:13,color:"#555",marginBottom:4}}>📍 Átvétel: <strong>{sel.pickup||"—"}</strong></div>
-                <div style={{fontSize:13,color:"#555"}}>📞 <strong>{sel.contact||"—"}</strong></div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:8}}>
-                {sel.contact&&<a href={`tel:${sel.contact}`} style={{background:"#dc2626",color:"#fff",borderRadius:9,padding:"12px 0",fontSize:13,fontWeight:700,textDecoration:"none",textAlign:"center",display:"block"}}>📞 Hívás</a>}
-                {sel.contact&&<a href={`https://wa.me/${(sel.contact||"").replace(/\D/g,"")}`} target="_blank" rel="noreferrer" style={{background:"#22c55e",color:"#fff",borderRadius:9,padding:"12px 0",fontSize:13,fontWeight:700,textDecoration:"none",textAlign:"center",display:"block"}}>💬 WhatsApp</a>}
-                <button onClick={()=>setSel(null)} style={{background:"#f0f0f0",color:"#666",border:"none",borderRadius:9,padding:"12px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>✕</button>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -1653,139 +1813,98 @@ function PublicCatalogue({onBack,onAdmin}){
   );
 }
 
-function Customers({orders}){
-  const[customers,setCustomers]=useState(null);
-  const[setup,setSetup]=useState(false);
-  const[detail,setDetail]=useState(null);
-  useEffect(()=>{db.get("customers_db",true).then(d=>setCustomers(d||null));}, []);
-  const uniqueCount=new Set(orders.map(o=>makeId(o.customer,o.zip))).size;
-  const firstSetup=async()=>{
-    setSetup(true);
-    const map={};
-    orders.forEach(o=>{
-      const id=makeId(o.customer,o.zip);
-      if(!map[id]) map[id]={id,name:o.customer,zip:o.zip||"",address:"",phone:"",platform:o.platform,orders:0,firstSeen:o.date};
-      map[id].orders++;
-    });
-    const list=Object.values(map);
-    await db.set("customers_db",list,true);
-    setCustomers(list);
-    setSetup(false);
-  };
-  const updateAddr=(id,addr)=>{
-    const updated=(customers||[]).map(c=>c.id===id?{...c,address:addr}:c);
-    setCustomers(updated);
-    db.set("customers_db",updated,true);
-  };
-  if(!customers) return(
-    <div>
-      <PH sub="Vevők nyilvántartása">Vevők</PH>
-      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:40,textAlign:"center"}}>
-        <div style={{fontSize:48,fontWeight:800,color:C.acc,marginBottom:6}}>{uniqueCount}</div>
-        <div style={{fontSize:14,fontWeight:700,color:C.t2,marginBottom:4}}>egyedi vevő a rendelésekből</div>
-        <div style={{fontSize:12,color:C.mu,marginBottom:24}}>Kattints az importáláshoz</div>
-        <Btn onClick={firstSetup} disabled={setup}>{setup?"Betöltés...":"⟳ Vevők importálása"}</Btn>
-      </div>
-    </div>
-  );
-  return(
-    <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
-        <PH sub="Mentett vevőadatok">Vevők</PH>
-        <Btn v="subtle" sz="sm" onClick={firstSetup} disabled={setup}>{setup?"...":"↺ Szinkronizál"}</Btn>
-      </div>
-      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden"}}>
-        <div style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 80px 60px",padding:"9px 16px",borderBottom:`1px solid ${C.bd}`,background:C.s2}}>
-          {["ID","Név","Cím","Platform","Rendel."].map((h,i)=><div key={i} style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8}}>{h}</div>)}
-        </div>
-        {customers.length===0&&<div style={{padding:24,textAlign:"center",color:C.mu,fontSize:13}}>Nincs vevő.</div>}
-        {customers.map((c,i)=>(
-          <div key={c.id} onClick={()=>setDetail(detail?.id===c.id?null:c)} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 80px 60px",padding:"12px 16px",borderBottom:i<customers.length-1?`1px solid ${C.bd}`:"none",cursor:"pointer"}}>
-            <span style={{fontSize:10,fontWeight:800,color:C.mu,fontFamily:"monospace"}}>{c.id}</span>
-            <div><div style={{fontSize:13,fontWeight:600,color:C.tx}}>{c.name}</div></div>
-            <div style={{fontSize:12,color:c.address?C.t2:C.mu}}>{c.address||<span style={{color:C.amber,fontSize:11}}>Nincs cím</span>}</div>
-            <div style={{fontSize:11,color:C.mu}}>{c.platform}</div>
-            <div style={{fontSize:12,fontWeight:700,color:C.acc}}>{c.orders}</div>
-          </div>
-        ))}
-      </div>
-      {detail&&(
-        <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,marginTop:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <div style={{fontSize:13,fontWeight:700,color:C.tx}}>{detail.name}</div>
-            <Btn v="ghost" sz="sm" onClick={()=>setDetail(null)}>✕</Btn>
-          </div>
-          <Field label="Szállítási cím" value={detail.address||""} onChange={v=>{const u={...detail,address:v};setDetail(u);updateAddr(detail.id,v);}} placeholder="pl. 2900 Komárom, Klapka tér 1."/>
-        </div>
-      )}
-    </div>
-  );
-}
+function SecurityPanel({user}){
+  const LOCKOUT_KEY="autorra_login_attempts";
+  const[attempts,setAttempts]=useState([]);
+  const[blocked,setBlocked]=useState(null); // null or {until, hard}
+  const[now,setNow]=useState(Date.now());
 
-function Settings({user}){
-  const[users,setUsers]=useState([]);
-  const[form,setForm]=useState({username:"",password:"",name:"",role:"staff"});
-  const[msg,setMsg]=useState("");
-  const[aiPrompt,setAiPrompt]=useState("");
-  const[promptSaved,setPromptSaved]=useState(false);
-  const f=(k)=>({value:form[k],onChange:v=>setForm(x=>({...x,[k]:v}))});
   useEffect(()=>{
-    db.get("team_users",true).then(d=>setUsers(Array.isArray(d)?d:[]));
-    db.get("ai_system_prompt",true).then(d=>setAiPrompt(d||DEFAULT_AI_PROMPT));
+    const refresh=()=>{
+      setNow(Date.now());
+      try{setAttempts(JSON.parse(localStorage.getItem(LOCKOUT_KEY)||"[]"));}catch{setAttempts([]);}
+    };
+    refresh();
+    const t=setInterval(refresh,5000);
+    return()=>clearInterval(t);
   },[]);
-  const add=async()=>{
-    if(!form.username||!form.password||!form.name)return;
-    const updated=[...users,{...form,id:Date.now()}];
-    await db.set("team_users",updated,true);
-    setUsers(updated);setForm({username:"",password:"",name:"",role:"staff"});
-    setMsg("✓ Hozzáadva");setTimeout(()=>setMsg(""),2000);
-  };
-  const del=async(id)=>{const u=users.filter(u=>u.id!==id);await db.set("team_users",u,true);setUsers(u);};
-  const savePrompt=async()=>{
-    await db.set("ai_system_prompt",aiPrompt,true);
-    setPromptSaved(true);setTimeout(()=>setPromptSaved(false),2000);
-  };
+
+  const unlock=()=>{localStorage.removeItem(LOCKOUT_KEY);setAttempts([]);};
+
+  const recent1h=attempts.filter(t=>now-t<3600000);
+  const recent24h=attempts.filter(t=>now-t<86400000);
+  const isHardBlocked=recent24h.length>=5;
+  const isSoftBlocked=!isHardBlocked&&recent1h.length>=3;
+  const nextUnlock=isSoftBlocked?(attempts[attempts.length-3]+3600000):null;
+  const minsLeft=nextUnlock?Math.ceil((nextUnlock-now)/60000):0;
+
+  const statusColor=isHardBlocked?C.acc:isSoftBlocked?C.amber:C.green;
+  const statusLabel=isHardBlocked?"Zárolt - Admin feloldás szükséges":isSoftBlocked?`Ideiglenes zárolás - ${minsLeft} perc`:"Aktív";
+
   return(
     <div>
-      <PH sub="Csapattagok és AI beállítások">Beállítások</PH>
-      {user?.role==="admin"&&(
-        <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,marginBottom:20}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <div>
-              <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1}}>AI RENDSZER PROMPT</div>
-              <div style={{fontSize:11,color:C.mu,marginTop:3}}>Az AI viselkedése az összes csatornán</div>
-            </div>
-            <div style={{display:"flex",gap:7}}>
-              <Btn v="outline" sz="sm" onClick={()=>setAiPrompt(DEFAULT_AI_PROMPT)}>Alapértelmezett</Btn>
-              <Btn v={promptSaved?"success":"primary"} sz="sm" onClick={savePrompt}>{promptSaved?"✓ Mentve":"Mentés"}</Btn>
+      <PH sub="Bejelentkezési kísérletek és zárolások">Biztonság</PH>
+
+      {/* Status card */}
+      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div>
+            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:4}}>ÁLLAPOT</div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:statusColor}}/>
+              <span style={{fontSize:14,fontWeight:700,color:C.tx}}>{statusLabel}</span>
             </div>
           </div>
-          <textarea value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} rows={8} style={{...inp,resize:"vertical",lineHeight:1.65,fontFamily:"monospace",fontSize:12,width:"100%"}}/>
+          {(isHardBlocked||isSoftBlocked)&&(
+            <Btn onClick={unlock} v="danger" sz="sm">Feloldás</Btn>
+          )}
         </div>
-      )}
-      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,marginBottom:20}}>
-        <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:14}}>ÚJ CSAPATTAG</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 120px auto",gap:10,alignItems:"end"}}>
-          <Field label="Teljes név" {...f("name")} placeholder="pl. Kovács Péter"/>
-          <Field label="Felhasználónév" {...f("username")} placeholder="pl. peter"/>
-          <Field label="Jelszó" type="password" {...f("password")} placeholder="jelszó"/>
-          <Field label="Szerepkör"><select value={form.role} onChange={e=>setForm(x=>({...x,role:e.target.value}))} style={inp}><option value="staff">Staff</option><option value="admin">Admin</option></select></Field>
-          <Btn onClick={add} disabled={!form.username||!form.password||!form.name}>{msg||"Hozzáad"}</Btn>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          {[["Kísérletek (1h)",recent1h.length,"/ 3"],["Kísérletek (24h)",recent24h.length,"/ 5"],["Összes naplózott",attempts.length,"db"]].map(([label,val,sub])=>(
+            <div key={label} style={{background:C.s2,borderRadius:8,padding:"12px 14px"}}>
+              <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>{label.toUpperCase()}</div>
+              <div style={{fontSize:22,fontWeight:800,color:val>0?C.amber:C.tx}}>{val}</div>
+              <div style={{fontSize:10,color:C.mu}}>{sub}</div>
+            </div>
+          ))}
         </div>
       </div>
-      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden"}}>
-        <div style={{display:"grid",gridTemplateColumns:"40px 1fr 100px 80px",padding:"9px 16px",borderBottom:`1px solid ${C.bd}`,background:C.s2}}>
-          {["#","Név","Szerepkör",""].map((h,i)=><div key={i} style={{fontSize:10,color:C.mu,fontWeight:700}}>{h}</div>)}
+
+      {/* Rules */}
+      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,marginBottom:16}}>
+        <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:14}}>SZABÁLYOK</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {[
+            ["3 hibás kísérlet 1 órán belül","1 óra zárolás",C.amber],
+            ["5 hibás kísérlet 24 órán belül","Teljes zárolás - admin feloldja",C.acc],
+            ["Sikeres bejelentkezés","Számláló nullázódik",C.green],
+          ].map(([rule,result,col])=>(
+            <div key={rule} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.s2,borderRadius:7}}>
+              <div style={{width:6,height:6,borderRadius:"50%",background:col,flexShrink:0}}/>
+              <div style={{flex:1,fontSize:12,color:C.t2}}>{rule}</div>
+              <div style={{fontSize:11,color:C.mu}}>→ {result}</div>
+            </div>
+          ))}
         </div>
-        {users.length===0&&<div style={{padding:24,textAlign:"center",color:C.mu,fontSize:13}}>Nincs csapattag.</div>}
-        {users.map((u,i)=>(
-          <div key={u.id} style={{display:"grid",gridTemplateColumns:"40px 1fr 100px 80px",padding:"11px 16px",borderBottom:i<users.length-1?`1px solid ${C.bd}`:"none",alignItems:"center"}}>
-            <span style={{fontSize:11,color:C.mu}}>{i+1}</span>
-            <div><div style={{fontSize:13,fontWeight:600,color:C.tx}}>{u.name}</div><div style={{fontSize:11,color:C.mu}}>{u.username}</div></div>
-            <span style={{fontSize:11,color:u.role==="admin"?C.acc:C.mu,fontWeight:600}}>{u.role}</span>
-            <Btn v="ghost" sz="sm" onClick={()=>del(u.id)} style={{color:C.acc}}>Törlés</Btn>
-          </div>
-        ))}
+      </div>
+
+      {/* Attempt log */}
+      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1}}>KÍSÉRLET NAPLÓ</div>
+          {attempts.length>0&&<Btn v="ghost" sz="sm" onClick={unlock}>Törlés</Btn>}
+        </div>
+        {attempts.length===0&&<div style={{fontSize:12,color:C.mu,textAlign:"center",padding:16}}>Nincs naplózott kísérlet.</div>}
+        {[...attempts].reverse().map((ts,i)=>{
+          const age=now-ts;
+          const fresh=age<3600000;
+          return(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<attempts.length-1?`1px solid ${C.bd}`:"none"}}>
+              <span style={{fontSize:12,color:C.t2,fontFamily:"monospace"}}>{new Date(ts).toLocaleString("hu",{hour:"2-digit",minute:"2-digit",second:"2-digit",day:"2-digit",month:"2-digit"})}</span>
+              <span style={{fontSize:11,color:fresh?C.amber:C.mu,fontWeight:fresh?700:400}}>{fresh?"Legutóbbi 1h":">"+"1h"}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1818,6 +1937,7 @@ function MainApp({user,onLogout,onPublic,onToggleTheme}){
     templates:()=><Templates/>,
     customers:()=><Customers orders={orders}/>,
     settings:()=><Settings user={user}/>,
+    security:()=><SecurityPanel user={user}/>,
   };
   return(<div style={{display:"flex",minHeight:"100vh",background:C.bg,color:C.tx,fontFamily:F}}>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -1827,70 +1947,102 @@ function MainApp({user,onLogout,onPublic,onToggleTheme}){
   </div>);
 }
 
-export default function App(){
-  const[user,setUser]=useState(null);
-  const[page,setPage]=useState("home"); // home | catalogue | login | app
+function LandingPage({onCatalogue,onAdmin,onLogin,loginOpen,setLoginOpen}){
+  const[landingLang,setLandingLang]=useState(()=>{try{return localStorage.getItem("autorra_lang")||"hu";}catch{return "hu";}});
+  const[contactOpen,setContactOpen]=useState(false);
   const[theme,setTheme]=useState(_theme);
+  const[mouse,setMouse]=useState({x:0.5,y:0.5});
+  const isDark=theme==="dark";
+  const bg=isDark?"#0c0c0f":"#f8f8fa";
+  const tx=isDark?"#f0f0f8":"#111";
+  const mu=isDark?"#888":"#666";
+  const handleMouse=e=>{const r=e.currentTarget.getBoundingClientRect();setMouse({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});};
+  const toggleTheme=()=>{const n=isDark?"light":"dark";applyTheme(n);setTheme(n);};
 
-  useEffect(()=>{
-    window.__setPublic=(v)=>setPage(v?"catalogue":"app");
-    // Re-apply theme on mount
-    applyTheme(_theme);setTheme(_theme);
-  },[]);
-
-  const toggleTheme=()=>{
-    const next=theme==="light"?"dark":"light";
-    applyTheme(next);setTheme(next);
-    // Force re-render by toggling
-    setTimeout(()=>setTheme(t=>t),10);
-  };
-
-  if(page==="app"&&user) return <MainApp user={user} onLogout={()=>{localStorage.removeItem("am_session");setUser(null);setPage("home");}} onPublic={()=>setPage("catalogue")} onToggleTheme={toggleTheme}/>;
-  if(page==="login") return <Login onLogin={u=>{setUser(u);setPage("app");}}/>;
-  if(page==="catalogue") return <PublicCatalogue onBack={()=>setPage("home")} onAdmin={()=>setPage("login")}/>;
-
-  // ── Landing page ──────────────────────────────────────────────────────────
   return(
-    <div style={{minHeight:"100vh",background:theme==="light"?"#f8f8fa":"#0c0c0f",fontFamily:F,color:theme==="light"?"#111":"#f0f0f8",display:"flex",flexDirection:"column"}}>
-      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-      <style>{"*{margin:0;padding:0;box-sizing:border-box}html,body{background:"+(_theme==="light"?"#f8f8fa":"#0c0c0f")+";height:100%}"}</style>
+    <div onMouseMove={handleMouse} style={{minHeight:"100vh",background:bg,fontFamily:F,color:tx,display:"flex",flexDirection:"column"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
 
       {/* Nav */}
       <nav style={{padding:"18px 32px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div style={{fontSize:22,fontWeight:900,letterSpacing:-0.5}}>
-          auto<span style={{color:"#dc2626"}}>rra</span>
-          <span style={{fontSize:10,fontWeight:600,color:"#888",marginLeft:6,letterSpacing:1,textTransform:"uppercase"}}>hu</span>
-        </div>
+        <div style={{fontSize:22,fontWeight:900,letterSpacing:-0.5}}>auto<span style={{color:"#dc2626"}}>rra</span><span style={{fontSize:10,fontWeight:600,color:"#888",marginLeft:6,letterSpacing:1,textTransform:"uppercase"}}>hu</span></div>
         <div style={{display:"flex",gap:12,alignItems:"center"}}>
-          <button onClick={toggleTheme} style={{background:"transparent",border:`1px solid ${theme==="light"?"#ddd":"#333"}`,borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",color:theme==="light"?"#555":"#999",fontFamily:F}}>{theme==="light"?"🌙":"☀"}</button>
-          <button onClick={()=>setPage("login")} style={{background:"transparent",border:"1px solid #dc2626",borderRadius:8,padding:"7px 18px",fontSize:12,fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:F}}>Admin →</button>
+          <button onClick={()=>setLandingLang(l=>l==="hu"?"en":"hu")} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:700,cursor:"pointer",color:mu,fontFamily:F,letterSpacing:0.5}}>{landingLang==="hu"?"EN":"HU"}</button>
+          <button onClick={toggleTheme} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",color:mu,fontFamily:F}}>{isDark?"☀":"🌙"}</button>
+          <div style={{position:"relative"}}>
+            <button onClick={e=>{e.stopPropagation();setLoginOpen(v=>!v);}} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:600,color:mu,cursor:"pointer",fontFamily:F}}>Login</button>
+            {loginOpen&&(
+              <>
+                <style>{"@keyframes popLogin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}"}</style>
+                <div onClick={e=>e.stopPropagation()} style={{position:"absolute",top:"calc(100% + 8px)",right:0,zIndex:200,background:isDark?"#0f0f13":"#ffffff",border:`1px solid ${isDark?"#1a1a22":"#e8e8ee"}`,borderRadius:0,width:260,boxShadow:isDark?"0 8px 28px rgba(0,0,0,0.5)":"0 8px 28px rgba(0,0,0,0.1)",animation:"popLogin 0.15s cubic-bezier(0.16,1,0.3,1) forwards"}}>
+                  <div style={{padding:"14px 16px 12px",borderBottom:`1px solid ${isDark?"#1a1a22":"#e8e8ee"}`,display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
+                    <span style={{fontSize:15,fontWeight:900,letterSpacing:-0.5,color:isDark?"#f0f0f8":"#111"}}>auto<span style={{color:"#dc2626"}}>rra</span></span>
+                    <span style={{fontSize:12,color:isDark?"#555":"#999"}}><span style={{color:"#dc2626",fontWeight:800}}>admin</span> / seller</span>
+                  </div>
+                  <div style={{padding:"14px 16px 16px"}}>
+                    <LoginInline onLogin={u=>{onLogin(u);setLoginOpen(false);}} theme={theme}/>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </nav>
 
       {/* Hero */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"40px 20px"}}>
-        <div style={{fontSize:11,fontWeight:700,letterSpacing:3,color:"#dc2626",textTransform:"uppercase",marginBottom:20}}>Minőségi autóalkatrészek</div>
-        <h1 style={{fontSize:"clamp(42px,7vw,80px)",fontWeight:900,lineHeight:1.05,letterSpacing:-2,marginBottom:20}}>
-          Lengyel alkatrész.<br/>
-          <span style={{color:"#dc2626"}}>Magyar ár.</span>
-        </h1>
-        <p style={{fontSize:17,color:theme==="light"?"#555":"#888",maxWidth:480,lineHeight:1.65,marginBottom:40}}>
-          Közvetlen import Krakkóból — eredeti és utángyártott alkatrészek személyautókhoz, kedvező áron, gyors kiszállítással.
-        </p>
-        <div style={{display:"flex",gap:14,flexWrap:"wrap",justifyContent:"center"}}>
-          <button onClick={()=>setPage("catalogue")} style={{background:"#dc2626",color:"#fff",border:"none",borderRadius:12,padding:"16px 36px",fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:F,letterSpacing:-0.3}}>Alkatrészek böngészése →</button>
-          <a href="https://wa.me/36201234567" style={{background:"transparent",border:`2px solid ${theme==="light"?"#ddd":"#333"}`,borderRadius:12,padding:"16px 36px",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:F,color:theme==="light"?"#333":"#ccc",textDecoration:"none",letterSpacing:-0.3}}>💬 Érdeklődés</a>
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"40px 20px 60px",position:"relative"}}>
+        <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:0,background:`radial-gradient(ellipse at ${20+mouse.x*60}% ${30+mouse.y*50}%, ${isDark?"rgba(220,38,38,0.07)":"rgba(220,38,38,0.04)"} 0%, transparent 60%)`,transition:"background 0.8s ease"}}/>
+        <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:0,background:isDark?"radial-gradient(ellipse at 50% 40%, transparent 40%, rgba(0,0,0,0.35) 100%)":"none"}}/>
+        <div style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
+          <div style={{fontSize:11,fontWeight:700,letterSpacing:3,color:"#dc2626",textTransform:"uppercase",marginBottom:20}}>{"Minőségi autóalkatrészek"}</div>
+          <h1 style={{fontSize:"clamp(42px,7vw,80px)",fontWeight:900,lineHeight:1.1,letterSpacing:-2,marginBottom:20,paddingBottom:4}}>
+            {T[landingLang]?.heroTitle||"Lengyel alkatrész."}<br/>
+            <span style={{color:"#dc2626",backgroundImage:`linear-gradient(${90+mouse.x*40-20}deg, #dc2626 0%, #ff6666 ${30+mouse.x*40}%, #dc2626 100%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",transition:"background-image 0.6s ease",display:"inline-block",paddingBottom:"0.15em"}}>{T[landingLang]?.heroRed||"Magyar ár."}</span>
+          </h1>
+          <p style={{fontSize:17,color:isDark?"#888":"#555",maxWidth:480,lineHeight:1.65,marginBottom:40}}>{T[landingLang]?.heroSub}</p>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap",justifyContent:"center",alignItems:"center"}}>
+            <button onClick={onCatalogue} style={{background:"linear-gradient(105deg, #b91c1c 0%, #dc2626 35%, #ef4444 60%, #dc2626 80%, #b91c1c 100%)",color:"#fff",border:"none",borderRadius:12,padding:"14px 32px",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:F,letterSpacing:-0.3,boxShadow:"0 0 28px rgba(220,38,38,0.35)",backgroundSize:"200% 100%",backgroundPosition:`${mouse.x*100}% 0`,transition:"background-position 0.4s ease"}}>{(T[landingLang]?.browse||"Alkatrészek")+" →"}</button>
+            <div style={{position:"relative"}}>
+              <button onClick={e=>{e.stopPropagation();setContactOpen(v=>!v);}} style={{background:"transparent",border:`2px solid ${isDark?"#333":"#ddd"}`,borderRadius:12,padding:"14px 32px",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:F,color:isDark?"#ccc":"#333",letterSpacing:-0.3}}>{landingLang==="en"?"Contact":"Érdeklődés"}</button>
+              {contactOpen&&(
+                <>
+                  <style>{"@keyframes rise{0%{opacity:0;transform:translateY(4px)}100%{opacity:1;transform:translateY(0)}}"}</style>
+                  <div onClick={e=>e.stopPropagation()} style={{position:"absolute",top:"calc(100% + 10px)",left:"50%",transform:"translateX(-50%)",zIndex:99,display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
+                    {[{href:"https://wa.me/36703771506",label:"WA · HU",bg:"#16a34a",delay:0},{href:"viber://chat?number=36703771506",label:"Viber · HU",bg:"#7c3aed",delay:35},{href:"sms:+36703771506",label:"SMS · HU",bg:isDark?"#2a2a35":"#e5e5ea",fg:isDark?"#ccc":"#333",delay:70},{href:"https://wa.me/48730320497",label:"WA · PL",bg:"#dc2626",delay:105},{href:"viber://chat?number=48730320497",label:"Viber · PL",bg:"#7c3aed",delay:140}].map((b,i)=>(
+                      <a key={i} href={b.href} target={b.href.startsWith("http")?"_blank":undefined} rel="noreferrer" style={{display:"block",padding:"7px 20px",borderRadius:999,background:b.bg,color:b.fg||"#fff",fontSize:11,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap",boxShadow:"0 2px 8px rgba(0,0,0,0.18)",animation:`rise 0.14s ease ${b.delay}ms both`,letterSpacing:0.3,fontFamily:F}}>{b.label}</a>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Feature strip */}
-      <div style={{borderTop:`1px solid ${theme==="light"?"#e8e8e8":"#1a1a1a"}`,padding:"28px 32px",display:"flex",justifyContent:"center",gap:48,flexWrap:"wrap"}}>
-        {[["🚗","Személyautó alkatrészek"],["📦","Krakkói raktárból"],["⚡","Gyors kiszállítás"],["✓","Ellenőrzött minőség"]].map(([icon,text])=>(
-          <div key={text} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:theme==="light"?"#555":"#888",fontWeight:600}}>
-            <span style={{fontSize:18}}>{icon}</span>{text}
-          </div>
+      <div style={{borderTop:`1px solid ${isDark?"#1a1a1a":"#e8e8e8"}`,padding:"28px 32px",display:"flex",justifyContent:"center",gap:48,flexWrap:"wrap"}}>
+        {[["",T[landingLang]?.browse||"Alkatrészek"],["",T[landingLang]?.directImport||"Közvetlen import"],["",T[landingLang]?.fastShip||"Gyors kiszállítás"],["",T[landingLang]?.partQuality||"Ellenőrzött minőség"]].map(([icon,text])=>(
+          <div key={text} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:isDark?"#888":"#555",fontWeight:600}}><span style={{fontSize:18}}>{icon}</span>{text}</div>
         ))}
       </div>
     </div>
   );
+}
+
+export default function App(){
+  const[user,setUser]=useState(null);
+  const[page,setPage]=useState("home");
+  const[loginOpen,setLoginOpen]=useState(false);
+  const[theme,setTheme]=useState(_theme);
+  const toggleTheme=()=>{const n=theme==="dark"?"light":"dark";applyTheme(n);setTheme(n);};
+
+  useEffect(()=>{window.__setPublic=(v)=>setPage(v?"catalogue":"app");},[]);
+
+  if(page==="app"&&user){
+    return(<MainApp user={user} onLogout={()=>{localStorage.removeItem("am_session");setUser(null);setPage("home");}} onPublic={()=>setPage("catalogue")} onToggleTheme={toggleTheme}/>);
+  }
+  if(page==="catalogue"){
+    return(<PublicCatalogue onBack={()=>setPage("home")} onAdmin={()=>{setPage("home");setTimeout(()=>setLoginOpen(true),100);}}/>);
+  }
+  return(<LandingPage onCatalogue={()=>setPage("catalogue")} onAdmin={()=>setLoginOpen(true)} onLogin={u=>{setUser(u);setPage("app");}} loginOpen={loginOpen} setLoginOpen={setLoginOpen}/>);
 }
