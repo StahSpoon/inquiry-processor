@@ -1962,6 +1962,7 @@ function LandingPage({onCatalogue,onAdmin,onLogin,loginOpen,setLoginOpen}){
   return(
     <div onMouseMove={handleMouse} style={{minHeight:"100vh",background:bg,fontFamily:F,color:tx,display:"flex",flexDirection:"column"}}>
       <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+      <meta name="facebook-domain-verification" content="vlf9idqqhfxqb5z4z40c5rw34pexdl" />
 
       {/* Nav */}
       <nav style={{padding:"18px 32px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
