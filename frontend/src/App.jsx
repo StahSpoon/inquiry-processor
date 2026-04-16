@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 
-const C = {
-  bg:"#0c0c0f",s1:"#111116",s2:"#16161d",s3:"#1c1c25",s4:"#22222e",
-  bd:"#22222c",bd2:"#2c2c3a",acc:"#dc2626",
-  tx:"#eeeef2",t2:"#b0b0c0",mu:"#606070",mu2:"#888898",
-  green:"#16a34a",blue:"#2563eb",amber:"#ca8a04",purple:"#7c3aed",cyan:"#0e7490",red:"#dc2626",
-};
+const DARK={bg:"#0c0c0f",s1:"#111116",s2:"#16161d",s3:"#1c1c25",s4:"#22222e",bd:"#22222c",bd2:"#2c2c3a",acc:"#dc2626",t2:"#c8c8d8",tx:"#f0f0f8",mu:"#606070",green:"#22c55e",amber:"#f59e0b",blue:"#3b82f6",cyan:"#06b6d4",purple:"#8b5cf6"};
+const LIGHT={bg:"#f8f8fa",s1:"#ffffff",s2:"#f1f1f5",s3:"#e8e8ef",s4:"#dddde8",bd:"#e0e0ea",bd2:"#c8c8d8",acc:"#dc2626",t2:"#222230",tx:"#0c0c18",mu:"#888898",green:"#16a34a",amber:"#d97706",blue:"#2563eb",cyan:"#0891b2",purple:"#7c3aed"};
+let _theme="dark";
+try{_theme=localStorage.getItem("autorra_theme")||"dark";}catch{}
+let C=_theme==="light"?{...LIGHT}:{...DARK};
+function applyTheme(t){_theme=t;C=t==="light"?{...LIGHT}:{...DARK};try{localStorage.setItem("autorra_theme",t);}catch{}}
 const ST={
   pending: {color:C.amber, bg:"#ca8a0412",label:"Függőben"},
   awaiting:{color:C.blue,  bg:"#2563eb12",label:"Visszaigazolásra vár"},
@@ -70,7 +70,7 @@ function partsLabel(o){
 }
 function totalQty(o){return getParts(o).reduce((s,p)=>s+(parseInt(p.qty)||1),0);}
 
-const DEFAULT_AI_PROMPT="Te egy autóalkatrész-kereskedés asszisztense vagy (PL→HU logisztika). Professzionálisan válaszolj az adott csatorna nyelvén. Azonosítsd az alkatrész nevét és a járművet. Röviden és egyértelműen fogalmazz.";
+const DEFAULT_AI_PROMPT="Te egy Autorra autóalkatrész asszisztense vagy (PL→HU logisztika). Professzionálisan válaszolj az adott csatorna nyelvén. Azonosítsd az alkatrész nevét és a járművet. Röviden és egyértelműen fogalmazz.";
 
 const db={
   async get(k,sh=false){try{const r=await window.storage.get(k,sh);return r?JSON.parse(r.value):null;}catch{return null;}},
@@ -109,7 +109,25 @@ const Modal=({children,onClose,width=520})=>(<div onClick={onClose} style={{posi
 const PH=({children,sub})=>(<div style={{marginBottom:24}}><h2 style={{fontSize:20,fontWeight:800,color:C.tx,margin:0,letterSpacing:-0.3}}>{children}</h2>{sub&&<p style={{color:C.mu,fontSize:13,margin:"4px 0 0"}}>{sub}</p>}</div>);
 
 function Login({onLogin}){
-  const[u,setU]=useState("");const[p,setP]=useState("");const[err,setErr]=useState("");const[ld,setLd]=useState(false);
+  const[u,setU]=useState("");
+  const[p,setP]=useState("");
+  const[err,setErr]=useState("");
+  const[ld,setLd]=useState(false);
+  const[remember,setRemember]=useState(true);
+  const[theme,setTheme]=useState(_theme);
+
+  // Check saved session on mount
+  useEffect(()=>{
+    try{
+      const saved=localStorage.getItem("am_session");
+      if(saved){
+        const{user,expiry}=JSON.parse(saved);
+        if(expiry>Date.now()) onLogin(user);
+        else localStorage.removeItem("am_session");
+      }
+    }catch{}
+  },[]);
+
   const go=async()=>{
     setLd(true);setErr("");
     try{
@@ -119,10 +137,80 @@ function Login({onLogin}){
       if(!r.ok) throw new Error(d.error||"Hiba");
       localStorage.setItem("am_token",d.token);
       if(window.__setAuthToken) window.__setAuthToken(d.token);
+      if(remember){
+        const expiry=Date.now()+(30*24*60*60*1000); // 30 days
+        localStorage.setItem("am_session",JSON.stringify({user:d.user,expiry}));
+      }
       onLogin(d.user);
     }catch(e){setErr(e.message||"Hibás felhasználónév vagy jelszó.");setLd(false);}
   };
-  return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><div style={{width:360}}><div style={{textAlign:"center",marginBottom:40}}><div style={{fontSize:10,color:C.mu,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Alkatrész</div><div style={{fontSize:30,fontWeight:800,color:C.tx,letterSpacing:-1}}>Manager<span style={{color:C.acc}}>.</span></div><div style={{fontSize:12,color:C.mu,marginTop:6}}>PL → HU logisztikai platform</div></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:28}}><div style={{display:"flex",flexDirection:"column",gap:14}}><Field label="Felhasználónév" value={u} onChange={setU} placeholder="felhasználónév"/><div><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:5}}>Jelszó</div><input type="password" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&u&&p)go();}} placeholder="••••••••" style={inp}/></div>{err&&<div style={{color:C.acc,fontSize:12,fontWeight:500}}>{err}</div>}<Btn onClick={go} disabled={ld||!u||!p} full>{ld?"Bejelentkezés...":"Bejelentkezés →"}</Btn></div></div></div></div>);
+
+  const isDark=theme==="dark";
+  const bg=isDark?"#0c0c0f":"#f8f8fa";
+  const card=isDark?"#111116":"#ffffff";
+  const border=isDark?"#22222c":"#e0e0ea";
+  const tx=isDark?"#f0f0f8":"#0c0c18";
+  const mu=isDark?"#606070":"#888898";
+
+  return(
+    <div style={{minHeight:"100vh",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}>
+      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+      <style>{"*{margin:0;padding:0;box-sizing:border-box}html,body{background:"+bg+";height:100%}"}</style>
+
+      {/* Theme toggle top right */}
+      <button onClick={()=>{const t=theme==="light"?"dark":"light";applyTheme(t);setTheme(t);}} style={{position:"fixed",top:16,right:16,background:"transparent",border:`1px solid ${border}`,borderRadius:8,padding:"6px 12px",fontSize:13,cursor:"pointer",color:mu,fontFamily:F}}>
+        {theme==="light"?"🌙":"☀"}
+      </button>
+
+      <div style={{width:380,padding:"0 20px"}}>
+        {/* Logo */}
+        <div style={{textAlign:"center",marginBottom:40}}>
+          <div style={{fontSize:42,fontWeight:900,letterSpacing:-1.5,color:tx,marginBottom:6}}>
+            auto<span style={{color:"#dc2626"}}>rra</span>
+          </div>
+          <div style={{fontSize:12,color:mu,letterSpacing:0.5}}>Admin belépés</div>
+        </div>
+
+        {/* Card */}
+        <div style={{background:card,border:`1px solid ${border}`,borderRadius:14,padding:32,boxShadow:isDark?"none":"0 4px 24px rgba(0,0,0,0.06)"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+            <div>
+              <div style={{fontSize:10,color:mu,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Felhasználónév</div>
+              <input value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&u&&p)go();}} placeholder="felhasználónév" autoComplete="username"
+                style={{width:"100%",padding:"11px 14px",borderRadius:8,border:`1.5px solid ${err?'#dc2626':border}`,background:isDark?"#16161d":"#fafafa",color:tx,fontSize:14,fontFamily:F,outline:"none"}}/>
+            </div>
+
+            <div>
+              <div style={{fontSize:10,color:mu,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Jelszó</div>
+              <input type="password" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&u&&p)go();}} placeholder="••••••••" autoComplete="current-password"
+                style={{width:"100%",padding:"11px 14px",borderRadius:8,border:`1.5px solid ${err?'#dc2626':border}`,background:isDark?"#16161d":"#fafafa",color:tx,fontSize:14,fontFamily:F,outline:"none"}}/>
+            </div>
+
+            {/* Remember me */}
+            <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>setRemember(r=>!r)}>
+              <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${remember?"#dc2626":border}`,background:remember?"#dc2626":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.15s"}}>
+                {remember&&<span style={{color:"#fff",fontSize:11,fontWeight:800}}>✓</span>}
+              </div>
+              <span style={{fontSize:12,color:mu}}>Emlékezz rám 30 napig</span>
+            </div>
+
+            {err&&<div style={{color:"#dc2626",fontSize:12,fontWeight:500,background:"#dc262610",borderRadius:6,padding:"8px 12px"}}>{err}</div>}
+
+            <button onClick={go} disabled={ld||!u||!p}
+              style={{width:"100%",padding:"13px 0",background:ld||!u||!p?"#888":"#dc2626",color:"#fff",border:"none",borderRadius:9,fontSize:15,fontWeight:800,cursor:ld||!u||!p?"not-allowed":"pointer",fontFamily:F,letterSpacing:-0.3,transition:"background 0.15s"}}>
+              {ld?"Bejelentkezés...":"Belépés →"}
+            </button>
+
+          </div>
+        </div>
+
+        <div style={{textAlign:"center",marginTop:20,fontSize:11,color:mu}}>
+          autorra.hu · Admin felület
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const NAV=[
@@ -138,7 +226,7 @@ const NAV=[
   {id:"customers",label:"Vevők",         icon:"◷"},
   {id:"settings", label:"Beállítások",  icon:"⚙"},
 ];
-function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos}){
+function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggleTheme}){
   const kn=orders.filter(o=>o.status==="krakow").length;
   const pn=orders.filter(o=>["pending","awaiting"].includes(o.status)).length;
   const un=(convos||[]).reduce((a,c)=>a+(c.unread||0),0);
@@ -146,10 +234,10 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos}){
     <span style={{background:col,color:"#fff",borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:800,minWidth:14,textAlign:"center",lineHeight:"14px"}}>{n}</span>
   ):null;
   return(
-    <div style={{width:200,background:"#080808",borderRight:"1px solid #141414",display:"flex",flexDirection:"column",minHeight:"100vh",flexShrink:0}}>
+    <div style={{width:200,background:C.s1,borderRight:`1px solid ${C.bd}`,display:"flex",flexDirection:"column",minHeight:"100vh",flexShrink:0}}>
       <div style={{padding:"24px 20px 18px"}}>
-        <div style={{fontSize:15,fontWeight:800,color:"#e8e8e8",letterSpacing:-0.5}}>Manager<span style={{color:C.acc}}>.</span></div>
-        <div style={{fontSize:9,color:"#2a2a2a",letterSpacing:2,textTransform:"uppercase",marginTop:3}}>PL → HU</div>
+        <div style={{fontSize:16,fontWeight:900,color:C.tx,letterSpacing:-0.5}}>auto<span style={{color:C.acc}}>rra</span></div>
+        <div style={{fontSize:9,color:C.mu,letterSpacing:2,textTransform:"uppercase",marginTop:3}}>PL → HU</div>
       </div>
       <div style={{flex:1,paddingTop:2}}>
         {NAV.filter(n=>!n.admin||user.role==="admin").map(n=>{
@@ -183,7 +271,7 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos}){
             <div style={{fontSize:9,color:"#2e2e2e",textTransform:"uppercase",letterSpacing:1}}>{user.role}</div>
           </div>
         </div>
-        <button onClick={onLogout} style={{background:"transparent",border:"none",color:"#282828",fontSize:10,cursor:"pointer",fontFamily:F,padding:0}}>Kijelentkezés</button>
+        <button onClick={onToggleTheme} style={{display:"block",width:"100%",background:"transparent",border:"none",color:C.mu,fontSize:11,cursor:"pointer",padding:"6px 0",fontFamily:F,marginBottom:4}}>{_theme==="light"?"🌙 Sötét mód":"☀ Világos mód"}</button><button onClick={onLogout} style={{background:"transparent",border:"none",color:"#282828",fontSize:10,cursor:"pointer",fontFamily:F,padding:0}}>Kijelentkezés</button>
       </div>
     </div>
   );
@@ -319,7 +407,7 @@ function AiDashboard({orders}){
     setLoading(true);setErr("");setInsight(null);
     const summary=filtered.slice(0,30).map(o=>`${makeId(o.customer,o.zip)} | ${o.status} | ${o.part} | ${o.car} | ${o.date}`).join(", ");
     try{
-      const text=await ai([{role:"user",content:`Te egy autóalkatrész-kereskedés AI elemzője vagy (PL-HU logisztika). Elemezd az alábbi rendelési adatokat és adj üzleti betekintést magyarul. Rendelések (${filtered.length} db, szűrő: ${statusFilter}):\n${summary}\n\nVálaszolj CSAK JSON formátumban:\n{"osszesfoglalas":"...","bottleneck":"...","topAlkatreszek":["max 3"],"javaslatok":["3 javaslat"],"kockazatok":["2 kockázat"],"statisztika":{"atlagosIdoNap":3,"legtobbenVaro":"státusz","teljesitesiArany":"75%"}}`}]);
+      const text=await ai([{role:"user",content:`Te egy Autorra autóalkatrész AI elemzője vagy (PL-HU logisztika). Elemezd az alábbi rendelési adatokat és adj üzleti betekintést magyarul. Rendelések (${filtered.length} db, szűrő: ${statusFilter}):\n${summary}\n\nVálaszolj CSAK JSON formátumban:\n{"osszesfoglalas":"...","bottleneck":"...","topAlkatreszek":["max 3"],"javaslatok":["3 javaslat"],"kockazatok":["2 kockázat"],"statisztika":{"atlagosIdoNap":3,"legtobbenVaro":"státusz","teljesitesiArany":"75%"}}`}]);
       const d=JSON.parse(text.split(String.fromCharCode(96,96,96)+"json").join("").split(String.fromCharCode(96,96,96)).join("").trim());
       setInsight(d);
     }catch(e){setErr("Hiba az elemzés során. Próbálja újra.");}
@@ -489,7 +577,7 @@ function Inbox({onCreateOrder,userName,users=[]}){
     const lang=chInfo?.lang==="PL"?"lengyel":"magyar";
     const history=ac.messages.slice(-6).map(m=>(m.from==="in"?"Ügyfél: ":"Mi: ")+m.text).join("\n");
     try{
-      const txt=await ai([{role:"user",content:`Te egy autóalkatrész-kereskedés AI asszisztense vagy. Az alábbi ${lang} nyelvű beszélgetés alapján adj reszletes professzionalis választ ${lang} nyelven és pontosan hiba nelkul azonosítsd az érdeklődést ha van.\n\nBeszélgetés:\n${history}\n\nVálaszolj JSON-ban: {"reply":"javasolt válasz allapotfelmeressel ${lang} nyelven","inquiry":{"partName":"alkatrész neve","car":"ALWAYS exact make + model + generation + year e.g. Mercedes-Benz C-Class W204 2010 or BMW 3 Series E90 2008 - NEVER just the brand name alone","quantity":1,"serialNumber":"OEM/part number EXACTLY as written by customer - copy character by character, do NOT interpret or correct - if none mentioned set null","serialNumberConfidence":"high if customer explicitly stated it, low if inferred"}}`}]);
+      const txt=await ai([{role:"user",content:`Te egy Autorra autóalkatrész AI asszisztense vagy. Az alábbi ${lang} nyelvű beszélgetés alapján adj reszletes professzionalis választ ${lang} nyelven és pontosan hiba nelkul azonosítsd az érdeklődést ha van.\n\nBeszélgetés:\n${history}\n\nVálaszolj JSON-ban: {"reply":"javasolt válasz allapotfelmeressel ${lang} nyelven","inquiry":{"partName":"alkatrész neve","car":"ALWAYS exact make + model + generation + year e.g. Mercedes-Benz C-Class W204 2010 or BMW 3 Series E90 2008 - NEVER just the brand name alone","quantity":1,"serialNumber":"OEM/part number EXACTLY as written by customer - copy character by character, do NOT interpret or correct - if none mentioned set null","serialNumberConfidence":"high if customer explicitly stated it, low if inferred"}}`}]);
       const d=JSON.parse(txt.replace(/```json|```/g,"").trim());
       setAiSugg(d);
     }catch{setAiSugg({reply:"Nem sikerült az AI elemzés.",inquiry:null});}
@@ -727,7 +815,7 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
     setNotify({order,newStatus,msg:tmpl});
     setNotifyLoad(true);
     try{
-      const prompt="Te egy autóalkatrész-kereskedés asszisztense vagy. Írj rövid, személyes magyar értesítő üzenetet az ügyfélnek az alábbi adatok alapján. Csak az üzenet szövegét írd, semmi mást.";
+      const prompt="Te egy Autorra autóalkatrész asszisztense vagy. Írj rövid, személyes magyar értesítő üzenetet az ügyfélnek az alábbi adatok alapján. Csak az üzenet szövegét írd, semmi mást.";
       const userMsg="Ügyfél: "+order.customer+" | Alkatrész: "+order.part+" | Jármű: "+order.car+" | Mennyiség: "+order.qty+" db | Új státusz: "+ST[newStatus].label+" | Sablon: "+tmpl;
       const generated=await ai([{role:"user",content:prompt+"\n\n"+userMsg}]);
       if(generated) setNotify(n=>n?{...n,msg:generated}:n);
@@ -1194,7 +1282,15 @@ function CatalogueManager({user}){
   const fileRef=useRef();
 
   useEffect(()=>{
-    db.get("catalogue_items",true).then(d=>setItems(Array.isArray(d)?d:[]));
+    db.get("catalogue_items",true).then(async d=>{
+      const meta=Array.isArray(d)?d:[];
+      // load images per item separately
+      const withImages=await Promise.all(meta.map(async item=>{
+        const imgs=await db.get("catalogue_img_"+item.id,true);
+        return {...item,images:Array.isArray(imgs)?imgs:[]};
+      }));
+      setItems(withImages);
+    });
     db.get("parts_learned",true).then(d=>setLearned(d&&typeof d==="object"?d:{}));
   },[]);
 
@@ -1261,15 +1357,30 @@ function CatalogueManager({user}){
     if(!form.partName||!form.price)return;
     setSaving(true);
     if(form.serialNumber&&form.car) await saveLearn(form.serialNumber,form.car,form.partName);
-    const item={id:Date.now(),...form,images,publishedBy:user?.name||"?",publishedAt:new Date().toISOString(),sold:false};
-    const updated=[item,...items];
-    try{await db.set("catalogue_items",updated,true);}catch(e){console.error("Save failed:",e);}
-    setItems(updated);
+    const id=Date.now();
+    // Save images separately (keeps catalogue_items small)
+    if(images.length>0){
+      const ok=await db.set("catalogue_img_"+id,images,true);
+      if(!ok)console.warn("Image save may have failed");
+    }
+    // Save metadata without images
+    const item={id,...form,images,publishedBy:user?.name||"?",publishedAt:new Date().toISOString(),sold:false};
+    const meta={id,...form,publishedBy:user?.name||"?",publishedAt:new Date().toISOString(),sold:false};
+    const metaList=[meta,...items.map(i=>({...i,images:undefined}))];
+    try{
+      await db.set("catalogue_items",metaList,true);
+    }catch(e){
+      console.error("Metadata save failed:",e);
+      setSaving(false);
+      alert("Mentés sikertelen. Ellenőrizd a kapcsolatot és próbáld újra.");
+      return;
+    }
+    setItems([item,...items]);
     setShowForm(false);setImages([]);setForm(BF);setSaving(false);
   };
 
-  const toggleSold=async(id)=>{const u=items.map(i=>i.id===id?{...i,sold:!i.sold}:i);await db.set("catalogue_items",u,true);setItems(u);};
-  const remove=async(id)=>{const u=items.filter(i=>i.id!==id);await db.set("catalogue_items",u,true);setItems(u);if(detail?.id===id)setDetail(null);};
+  const toggleSold=async(id)=>{const u=items.map(i=>i.id===id?{...i,sold:!i.sold}:i);await db.set("catalogue_items",u.map(i=>({...i,images:undefined})),true);setItems(u);};
+  const remove=async(id)=>{const u=items.filter(i=>i.id!==id);await db.set("catalogue_items",u.map(i=>({...i,images:undefined})),true);await db.set("catalogue_img_"+id,[],true);setItems(u);if(detail?.id===id)setDetail(null);};
 
   const COND_C2={Jó:C.green,Bontott:C.amber,Hibás:C.acc,Felújított:C.blue};
   const condColor=(c)=>COND_C2[c]||C.mu;
@@ -1413,7 +1524,7 @@ function CatalogueManager({user}){
   );
 }
 
-function PublicCatalogue({onBack}){
+function PublicCatalogue({onBack,onAdmin}){
   const[items,setItems]=useState([]);
   const[ld,setLd]=useState(true);
   const[search,setSearch]=useState("");
@@ -1423,9 +1534,13 @@ function PublicCatalogue({onBack}){
 
   useEffect(()=>{
     db.get("catalogue_items",true)
-      .then(d=>{
-        const arr=Array.isArray(d)?d:[];
-        setItems(arr.filter(i=>!i.sold));
+      .then(async d=>{
+        const meta=Array.isArray(d)?d.filter(i=>!i.sold):[];
+        const withImages=await Promise.all(meta.map(async item=>{
+          const imgs=await db.get("catalogue_img_"+item.id,true);
+          return {...item,images:Array.isArray(imgs)?imgs:[]};
+        }));
+        setItems(withImages);
         setLd(false);
       })
       .catch(()=>setLd(false));
@@ -1443,12 +1558,12 @@ function PublicCatalogue({onBack}){
     <div style={{minHeight:"100vh",background:"#f5f5f7",fontFamily:F}}>
       {/* Header */}
       <div style={{background:"#fff",borderBottom:"1px solid #e5e5e7",padding:"14px 24px",display:"flex",alignItems:"center",gap:16,position:"sticky",top:0,zIndex:10}}>
-        <button onClick={onBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"#666",fontSize:13,fontFamily:F,display:"flex",alignItems:"center",gap:4}}>← Vissza</button>
+        <button onClick={onBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"#666",fontSize:13,fontFamily:F,display:"flex",alignItems:"center",gap:4}}>← Vissza</button><div style={{fontWeight:800,fontSize:16,letterSpacing:-0.3}}>auto<span style={{color:"#dc2626"}}>rra</span></div>
         <div style={{flex:1,maxWidth:480}}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍  Keresés alkatrész, jármű, cikkszám alapján..." style={{width:"100%",padding:"8px 14px",borderRadius:20,border:"1.5px solid #e0e0e0",fontSize:13,fontFamily:F,outline:"none",background:"#fafafa"}}/>
         </div>
-        <div style={{display:"flex",gap:6}}>
-          {["Összes",...CONDITIONS].map(c=>(
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {onAdmin&&<button onClick={onAdmin} style={{padding:"5px 12px",borderRadius:15,border:"1.5px solid #e0e0e0",background:"transparent",color:"#888",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:F,marginRight:4}}>Admin</button>}{["Összes",...CONDITIONS].map(c=>(
             <button key={c} onClick={()=>setCond(c)} style={{padding:"5px 12px",borderRadius:15,border:"1.5px solid",borderColor:cond===c?"#dc2626":"#e0e0e0",background:cond===c?"#dc2626":"#fff",color:cond===c?"#fff":"#555",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:F}}>{c}</button>
           ))}
         </div>
@@ -1538,7 +1653,146 @@ function PublicCatalogue({onBack}){
   );
 }
 
-function MainApp({user,onLogout,onPublic}){
+function Customers({orders}){
+  const[customers,setCustomers]=useState(null);
+  const[setup,setSetup]=useState(false);
+  const[detail,setDetail]=useState(null);
+  useEffect(()=>{db.get("customers_db",true).then(d=>setCustomers(d||null));}, []);
+  const uniqueCount=new Set(orders.map(o=>makeId(o.customer,o.zip))).size;
+  const firstSetup=async()=>{
+    setSetup(true);
+    const map={};
+    orders.forEach(o=>{
+      const id=makeId(o.customer,o.zip);
+      if(!map[id]) map[id]={id,name:o.customer,zip:o.zip||"",address:"",phone:"",platform:o.platform,orders:0,firstSeen:o.date};
+      map[id].orders++;
+    });
+    const list=Object.values(map);
+    await db.set("customers_db",list,true);
+    setCustomers(list);
+    setSetup(false);
+  };
+  const updateAddr=(id,addr)=>{
+    const updated=(customers||[]).map(c=>c.id===id?{...c,address:addr}:c);
+    setCustomers(updated);
+    db.set("customers_db",updated,true);
+  };
+  if(!customers) return(
+    <div>
+      <PH sub="Vevők nyilvántartása">Vevők</PH>
+      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:40,textAlign:"center"}}>
+        <div style={{fontSize:48,fontWeight:800,color:C.acc,marginBottom:6}}>{uniqueCount}</div>
+        <div style={{fontSize:14,fontWeight:700,color:C.t2,marginBottom:4}}>egyedi vevő a rendelésekből</div>
+        <div style={{fontSize:12,color:C.mu,marginBottom:24}}>Kattints az importáláshoz</div>
+        <Btn onClick={firstSetup} disabled={setup}>{setup?"Betöltés...":"⟳ Vevők importálása"}</Btn>
+      </div>
+    </div>
+  );
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
+        <PH sub="Mentett vevőadatok">Vevők</PH>
+        <Btn v="subtle" sz="sm" onClick={firstSetup} disabled={setup}>{setup?"...":"↺ Szinkronizál"}</Btn>
+      </div>
+      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 80px 60px",padding:"9px 16px",borderBottom:`1px solid ${C.bd}`,background:C.s2}}>
+          {["ID","Név","Cím","Platform","Rendel."].map((h,i)=><div key={i} style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8}}>{h}</div>)}
+        </div>
+        {customers.length===0&&<div style={{padding:24,textAlign:"center",color:C.mu,fontSize:13}}>Nincs vevő.</div>}
+        {customers.map((c,i)=>(
+          <div key={c.id} onClick={()=>setDetail(detail?.id===c.id?null:c)} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 80px 60px",padding:"12px 16px",borderBottom:i<customers.length-1?`1px solid ${C.bd}`:"none",cursor:"pointer"}}>
+            <span style={{fontSize:10,fontWeight:800,color:C.mu,fontFamily:"monospace"}}>{c.id}</span>
+            <div><div style={{fontSize:13,fontWeight:600,color:C.tx}}>{c.name}</div></div>
+            <div style={{fontSize:12,color:c.address?C.t2:C.mu}}>{c.address||<span style={{color:C.amber,fontSize:11}}>Nincs cím</span>}</div>
+            <div style={{fontSize:11,color:C.mu}}>{c.platform}</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.acc}}>{c.orders}</div>
+          </div>
+        ))}
+      </div>
+      {detail&&(
+        <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,marginTop:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:700,color:C.tx}}>{detail.name}</div>
+            <Btn v="ghost" sz="sm" onClick={()=>setDetail(null)}>✕</Btn>
+          </div>
+          <Field label="Szállítási cím" value={detail.address||""} onChange={v=>{const u={...detail,address:v};setDetail(u);updateAddr(detail.id,v);}} placeholder="pl. 2900 Komárom, Klapka tér 1."/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Settings({user}){
+  const[users,setUsers]=useState([]);
+  const[form,setForm]=useState({username:"",password:"",name:"",role:"staff"});
+  const[msg,setMsg]=useState("");
+  const[aiPrompt,setAiPrompt]=useState("");
+  const[promptSaved,setPromptSaved]=useState(false);
+  const f=(k)=>({value:form[k],onChange:v=>setForm(x=>({...x,[k]:v}))});
+  useEffect(()=>{
+    db.get("team_users",true).then(d=>setUsers(Array.isArray(d)?d:[]));
+    db.get("ai_system_prompt",true).then(d=>setAiPrompt(d||DEFAULT_AI_PROMPT));
+  },[]);
+  const add=async()=>{
+    if(!form.username||!form.password||!form.name)return;
+    const updated=[...users,{...form,id:Date.now()}];
+    await db.set("team_users",updated,true);
+    setUsers(updated);setForm({username:"",password:"",name:"",role:"staff"});
+    setMsg("✓ Hozzáadva");setTimeout(()=>setMsg(""),2000);
+  };
+  const del=async(id)=>{const u=users.filter(u=>u.id!==id);await db.set("team_users",u,true);setUsers(u);};
+  const savePrompt=async()=>{
+    await db.set("ai_system_prompt",aiPrompt,true);
+    setPromptSaved(true);setTimeout(()=>setPromptSaved(false),2000);
+  };
+  return(
+    <div>
+      <PH sub="Csapattagok és AI beállítások">Beállítások</PH>
+      {user?.role==="admin"&&(
+        <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,marginBottom:20}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div>
+              <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1}}>AI RENDSZER PROMPT</div>
+              <div style={{fontSize:11,color:C.mu,marginTop:3}}>Az AI viselkedése az összes csatornán</div>
+            </div>
+            <div style={{display:"flex",gap:7}}>
+              <Btn v="outline" sz="sm" onClick={()=>setAiPrompt(DEFAULT_AI_PROMPT)}>Alapértelmezett</Btn>
+              <Btn v={promptSaved?"success":"primary"} sz="sm" onClick={savePrompt}>{promptSaved?"✓ Mentve":"Mentés"}</Btn>
+            </div>
+          </div>
+          <textarea value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} rows={8} style={{...inp,resize:"vertical",lineHeight:1.65,fontFamily:"monospace",fontSize:12,width:"100%"}}/>
+        </div>
+      )}
+      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,marginBottom:20}}>
+        <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:14}}>ÚJ CSAPATTAG</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 120px auto",gap:10,alignItems:"end"}}>
+          <Field label="Teljes név" {...f("name")} placeholder="pl. Kovács Péter"/>
+          <Field label="Felhasználónév" {...f("username")} placeholder="pl. peter"/>
+          <Field label="Jelszó" type="password" {...f("password")} placeholder="jelszó"/>
+          <Field label="Szerepkör"><select value={form.role} onChange={e=>setForm(x=>({...x,role:e.target.value}))} style={inp}><option value="staff">Staff</option><option value="admin">Admin</option></select></Field>
+          <Btn onClick={add} disabled={!form.username||!form.password||!form.name}>{msg||"Hozzáad"}</Btn>
+        </div>
+      </div>
+      <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"40px 1fr 100px 80px",padding:"9px 16px",borderBottom:`1px solid ${C.bd}`,background:C.s2}}>
+          {["#","Név","Szerepkör",""].map((h,i)=><div key={i} style={{fontSize:10,color:C.mu,fontWeight:700}}>{h}</div>)}
+        </div>
+        {users.length===0&&<div style={{padding:24,textAlign:"center",color:C.mu,fontSize:13}}>Nincs csapattag.</div>}
+        {users.map((u,i)=>(
+          <div key={u.id} style={{display:"grid",gridTemplateColumns:"40px 1fr 100px 80px",padding:"11px 16px",borderBottom:i<users.length-1?`1px solid ${C.bd}`:"none",alignItems:"center"}}>
+            <span style={{fontSize:11,color:C.mu}}>{i+1}</span>
+            <div><div style={{fontSize:13,fontWeight:600,color:C.tx}}>{u.name}</div><div style={{fontSize:11,color:C.mu}}>{u.username}</div></div>
+            <span style={{fontSize:11,color:u.role==="admin"?C.acc:C.mu,fontWeight:600}}>{u.role}</span>
+            <Btn v="ghost" sz="sm" onClick={()=>del(u.id)} style={{color:C.acc}}>Törlés</Btn>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+function MainApp({user,onLogout,onPublic,onToggleTheme}){
   const[view,setView]=useState("dashboard");
   const[ordersFilter,setOrdersFilter]=useState("all");
   const[orders,setOrders]=useState([]);const[ready,setReady]=useState(false);const[nextId,setNextId]=useState(100);
@@ -1567,16 +1821,76 @@ function MainApp({user,onLogout,onPublic}){
   };
   return(<div style={{display:"flex",minHeight:"100vh",background:C.bg,color:C.tx,fontFamily:F}}>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <style>{"*{margin:0;padding:0;box-sizing:border-box}html,body{background:#0c0c0f;width:100%;height:100%}#root{min-height:100vh}*{scrollbar-width:thin;scrollbar-color:#1e1e1e #0a0a0a}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:#0a0a0a}::-webkit-scrollbar-thumb{background:#1e1e1e;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#2a2a2a}::-webkit-scrollbar-corner{background:#0a0a0a}"}</style>
-    <Sidebar active={view} setActive={setView} user={user} onLogout={onLogout} onPublic={onPublic} orders={orders} convos={convos}/>
+    <style>{"*{margin:0;padding:0;box-sizing:border-box}html,body{background:"+C.bg+";width:100%;height:100%}#root{min-height:100vh}*{scrollbar-width:thin;scrollbar-color:#1e1e1e #0a0a0a}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:#0a0a0a}::-webkit-scrollbar-thumb{background:#1e1e1e;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#2a2a2a}::-webkit-scrollbar-corner{background:#0a0a0a}"}</style>
+    <Sidebar active={view} setActive={setView} user={user} onLogout={onLogout} onPublic={onPublic} orders={orders} convos={convos} onToggleTheme={onToggleTheme}/>
     <div style={{flex:1,padding:view==="inbox"?"0":"32px 36px",overflowY:view==="inbox"?"hidden":"auto",minWidth:0}}>{panels[view]?panels[view]():null}</div>
   </div>);
 }
 
 export default function App(){
-  const[user,setUser]=useState(null);const[pub,setPub]=useState(false);
-  useEffect(()=>{window.__setPublic=(v)=>setPub(v);},[]);
-  if(pub)return <PublicCatalogue onBack={()=>setPub(false)}/>;
-  if(!user)return <Login onLogin={setUser}/>;
-  return <MainApp user={user} onLogout={()=>setUser(null)} onPublic={()=>setPub(true)}/>;
+  const[user,setUser]=useState(null);
+  const[page,setPage]=useState("home"); // home | catalogue | login | app
+  const[theme,setTheme]=useState(_theme);
+
+  useEffect(()=>{
+    window.__setPublic=(v)=>setPage(v?"catalogue":"app");
+    // Re-apply theme on mount
+    applyTheme(_theme);setTheme(_theme);
+  },[]);
+
+  const toggleTheme=()=>{
+    const next=theme==="light"?"dark":"light";
+    applyTheme(next);setTheme(next);
+    // Force re-render by toggling
+    setTimeout(()=>setTheme(t=>t),10);
+  };
+
+  if(page==="app"&&user) return <MainApp user={user} onLogout={()=>{localStorage.removeItem("am_session");setUser(null);setPage("home");}} onPublic={()=>setPage("catalogue")} onToggleTheme={toggleTheme}/>;
+  if(page==="login") return <Login onLogin={u=>{setUser(u);setPage("app");}}/>;
+  if(page==="catalogue") return <PublicCatalogue onBack={()=>setPage("home")} onAdmin={()=>setPage("login")}/>;
+
+  // ── Landing page ──────────────────────────────────────────────────────────
+  return(
+    <div style={{minHeight:"100vh",background:theme==="light"?"#f8f8fa":"#0c0c0f",fontFamily:F,color:theme==="light"?"#111":"#f0f0f8",display:"flex",flexDirection:"column"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+      <style>{"*{margin:0;padding:0;box-sizing:border-box}html,body{background:"+(_theme==="light"?"#f8f8fa":"#0c0c0f")+";height:100%}"}</style>
+
+      {/* Nav */}
+      <nav style={{padding:"18px 32px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:22,fontWeight:900,letterSpacing:-0.5}}>
+          auto<span style={{color:"#dc2626"}}>rra</span>
+          <span style={{fontSize:10,fontWeight:600,color:"#888",marginLeft:6,letterSpacing:1,textTransform:"uppercase"}}>hu</span>
+        </div>
+        <div style={{display:"flex",gap:12,alignItems:"center"}}>
+          <button onClick={toggleTheme} style={{background:"transparent",border:`1px solid ${theme==="light"?"#ddd":"#333"}`,borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",color:theme==="light"?"#555":"#999",fontFamily:F}}>{theme==="light"?"🌙":"☀"}</button>
+          <button onClick={()=>setPage("login")} style={{background:"transparent",border:"1px solid #dc2626",borderRadius:8,padding:"7px 18px",fontSize:12,fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:F}}>Admin →</button>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"40px 20px"}}>
+        <div style={{fontSize:11,fontWeight:700,letterSpacing:3,color:"#dc2626",textTransform:"uppercase",marginBottom:20}}>Minőségi autóalkatrészek</div>
+        <h1 style={{fontSize:"clamp(42px,7vw,80px)",fontWeight:900,lineHeight:1.05,letterSpacing:-2,marginBottom:20}}>
+          Lengyel alkatrész.<br/>
+          <span style={{color:"#dc2626"}}>Magyar ár.</span>
+        </h1>
+        <p style={{fontSize:17,color:theme==="light"?"#555":"#888",maxWidth:480,lineHeight:1.65,marginBottom:40}}>
+          Közvetlen import Krakkóból — eredeti és utángyártott alkatrészek személyautókhoz, kedvező áron, gyors kiszállítással.
+        </p>
+        <div style={{display:"flex",gap:14,flexWrap:"wrap",justifyContent:"center"}}>
+          <button onClick={()=>setPage("catalogue")} style={{background:"#dc2626",color:"#fff",border:"none",borderRadius:12,padding:"16px 36px",fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:F,letterSpacing:-0.3}}>Alkatrészek böngészése →</button>
+          <a href="https://wa.me/36201234567" style={{background:"transparent",border:`2px solid ${theme==="light"?"#ddd":"#333"}`,borderRadius:12,padding:"16px 36px",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:F,color:theme==="light"?"#333":"#ccc",textDecoration:"none",letterSpacing:-0.3}}>💬 Érdeklődés</a>
+        </div>
+      </div>
+
+      {/* Feature strip */}
+      <div style={{borderTop:`1px solid ${theme==="light"?"#e8e8e8":"#1a1a1a"}`,padding:"28px 32px",display:"flex",justifyContent:"center",gap:48,flexWrap:"wrap"}}>
+        {[["🚗","Személyautó alkatrészek"],["📦","Krakkói raktárból"],["⚡","Gyors kiszállítás"],["✓","Ellenőrzött minőség"]].map(([icon,text])=>(
+          <div key={text} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:theme==="light"?"#555":"#888",fontWeight:600}}>
+            <span style={{fontSize:18}}>{icon}</span>{text}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
