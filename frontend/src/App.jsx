@@ -1957,7 +1957,7 @@ function LandingPage({onCatalogue,onAdmin,onLogin,loginOpen,setLoginOpen}){
   // Rotating hero text
   const[heroIdx,setHeroIdx]=useState(0);
   const heroTexts=[
-    {top:"Lengyel alkatr\u00e9sz.",bottom:"Magyar \u00e1r.",topEn:"Polish parts.",bottomEn:"Hungarian price."},
+    {top:"Lengyel alkatr\u00e9sz.",bottom:"Alacsony \u00e1r.",topEn:"Polish parts.",bottomEn:"Low price."},
     {top:"Bontott alkatr\u00e9szek.",bottom:"Ellen\u0151rz\u00f6tt min\u0151s\u00e9g.",topEn:"Used parts.",bottomEn:"Verified quality."},
   ];
   useEffect(()=>{
