@@ -26,7 +26,7 @@ const T={
     admin:"Admin",back:"\u2190 Vissza",available:"El\u00e9rhet\u0151",sold:"Eladva",
     askPrice:"\u00c1r: \u00e9rdekl\u0151dj\u00f6n",description:"Le\u00edr\u00e1s",category:"Kateg\u00f3ria",
     heroTitle:"Lengyel alkatr\u00e9sz.",heroRed:"Magyar \u00e1r.",
-    heroSub:"K\u00f6zvetlen import Krakk\u00f3b\u00f3l - eredeti \u00e9s ut\u00e1ngy\u00e1rtott alkatr\u00e9szek, kedvez\u0151 \u00e1ron.",
+    heroSub:"K\u00f6zvetlen import besz\u00e1ll\u00edt\u00f3kt\u00f3l - eredeti \u00e9s ut\u00e1ngy\u00e1rtott alkatr\u00e9szek, kedvez\u0151 \u00e1ron.",
     partQuality:"Ellen\u0151rz\u00f6tt min\u0151s\u00e9g",fastShip:"Gyors kisz\u00e1ll\u00edt\u00e1s",
     directImport:"K\u00f6zvetlen import",allMakes:"Minden m\u00e1rka",
     apply:"Alkalmaz",allParts:"Minden alkatr\u00e9sz",editFilter:"Sz\u0171r\u0151 szerkeszt\u00e9se",
@@ -40,7 +40,7 @@ const T={
     admin:"Admin",back:"\u2190 Back",available:"Available",sold:"Sold",
     askPrice:"Ask for price",description:"Description",category:"Category",
     heroTitle:"Polish parts.",heroRed:"Hungarian price.",
-    heroSub:"Direct import from Krak\u00f3w - OEM and aftermarket parts, best prices, fast delivery.",
+    heroSub:"Direct import from suppliers - OEM and aftermarket parts, best prices, fast delivery.",
     partQuality:"Verified quality",fastShip:"Fast delivery",
     directImport:"Direct import",allMakes:"All makes",
     apply:"Apply",allParts:"All parts",editFilter:"Edit filter",
@@ -1954,6 +1954,18 @@ function LandingPage({onCatalogue,onAdmin,onLogin,loginOpen,setLoginOpen}){
   const handleMouse=e=>{const r=e.currentTarget.getBoundingClientRect();setMouse({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});};
   const toggleTheme=()=>{const n=isDark?"light":"dark";applyTheme(n);setTheme(n);};
 
+  // Rotating hero text
+  const[heroIdx,setHeroIdx]=useState(0);
+  const heroTexts=[
+    {top:"Lengyel alkatr\u00e9sz.",bottom:"Magyar \u00e1r.",topEn:"Polish parts.",bottomEn:"Hungarian price."},
+    {top:"Bontott alkatr\u00e9szek.",bottom:"Ellen\u0151rz\u00f6tt min\u0151s\u00e9g.",topEn:"Used parts.",bottomEn:"Verified quality."},
+  ];
+  useEffect(()=>{
+    const t=setInterval(()=>setHeroIdx(i=>(i+1)%heroTexts.length),4500);
+    return()=>clearInterval(t);
+  },[]);
+  const currHero=heroTexts[heroIdx];
+
   return(
     <div onMouseMove={handleMouse} style={{minHeight:"100vh",background:bg,fontFamily:F,color:tx,display:"flex",flexDirection:"column"}}>
       <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
@@ -1990,9 +2002,10 @@ function LandingPage({onCatalogue,onAdmin,onLogin,loginOpen,setLoginOpen}){
         <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:0,background:isDark?"radial-gradient(ellipse at 50% 40%, transparent 40%, rgba(0,0,0,0.35) 100%)":"none"}}/>
         <div style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
           <div style={{fontSize:11,fontWeight:700,letterSpacing:3,color:"#dc2626",textTransform:"uppercase",marginBottom:20}}>{"Min\u0151s\u00e9gi aut\u00f3alkatr\u00e9szek"}</div>
-          <h1 style={{fontSize:"clamp(42px,7vw,80px)",fontWeight:900,lineHeight:1.1,letterSpacing:-2,marginBottom:20,paddingBottom:4}}>
-            {(T[landingLang]&&T[landingLang].heroTitle)||"Lengyel alkatr\u00e9sz."}<br/>
-            <span style={{color:"#dc2626",backgroundImage:`linear-gradient(${90+mouse.x*40-20}deg, #dc2626 0%, #ff6666 ${30+mouse.x*40}%, #dc2626 100%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",transition:"background-image 0.6s ease",display:"inline-block",paddingBottom:"0.15em"}}>{(T[landingLang]&&T[landingLang].heroRed)||"Magyar \u00e1r."}</span>
+          <h1 style={{fontSize:"clamp(42px,7vw,80px)",fontWeight:900,lineHeight:1.1,letterSpacing:-2,marginBottom:20,paddingBottom:4,minHeight:"clamp(100px,16vw,195px)"}}>
+            <style>{"@keyframes heroFade{0%{opacity:0;transform:translateY(10px)}15%{opacity:1;transform:translateY(0)}85%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-10px)}}"}</style>
+            <span key={heroIdx+"-top"} style={{display:"block",animation:"heroFade 4.5s ease-in-out both"}}>{landingLang==="en"?currHero.topEn:currHero.top}</span>
+            <span key={heroIdx+"-bot"} style={{color:"#dc2626",backgroundImage:`linear-gradient(${90+mouse.x*40-20}deg, #dc2626 0%, #ff6666 ${30+mouse.x*40}%, #dc2626 100%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",transition:"background-image 0.6s ease",display:"inline-block",paddingBottom:"0.15em",animation:"heroFade 4.5s ease-in-out both"}}>{landingLang==="en"?currHero.bottomEn:currHero.bottom}</span>
           </h1>
           <p style={{fontSize:17,color:isDark?"#888":"#555",maxWidth:480,lineHeight:1.65,marginBottom:40}}>{(T[landingLang]&&T[landingLang].heroSub)}</p>
           <div style={{display:"flex",gap:12,flexWrap:"wrap",justifyContent:"center",alignItems:"center"}}>
