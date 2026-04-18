@@ -1800,11 +1800,17 @@ function CatalogueManager({user}){
         </div>
       )}
 
-      {/* Items list */}
-      {items.length===0&&!showForm&&(
+      {/* Items list - loading state, then empty state, then items */}
+      {!loaded&&(
         <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center",color:C.mu}}>
-          <div style={{fontSize:32,marginBottom:12,color:C.mu}}><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
-          <div style={{fontSize:13}}>Nincs alkatrész. Kattints az Új alkatrész gombra!</div>
+          <div style={{display:"inline-block",width:32,height:32,border:`3px solid ${C.bd}`,borderTopColor:C.acc,borderRadius:"50%",animation:"spin 0.8s linear infinite",marginBottom:14}}/>
+          <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+          <div style={{fontSize:13}}>Alkatrészek betöltése...</div>
+        </div>
+      )}
+      {loaded&&items.length===0&&!showForm&&(
+        <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center",color:C.mu}}>
+          <div style={{fontSize:13}}>Nincs alkatrész. Kattints az "+ Új alkatrész" gombra!</div>
         </div>
       )}
 
@@ -2046,23 +2052,124 @@ function PublicCatalogue({onBack,onAdmin}){
         {ld&&(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:80,color:mu}}><div style={{width:36,height:36,border:`3px solid ${border}`,borderTopColor:"#dc2626",borderRadius:"50%",animation:"spin 0.8s linear infinite",marginBottom:16}}/><style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style><div style={{fontSize:14}}>{t.loading}</div></div>)}
 
         {/* -- Empty state -- */}
-        {!ld&&shown.length===0&&(<div style={{textAlign:"center",padding:"80px 20px",color:mu}}><div style={{fontSize:13,fontWeight:600,color:isDark?"#555":"#aaa",letterSpacing:0.5,marginBottom:8}}>{t.noResults}</div>{activeFilters>0&&<button onClick={()=>{setCond("all");setCat("all");setCatParent("all");setMake("all");setSearch("");}} style={{marginTop:10,background:"transparent",color:mu,border:`1px solid ${border}`,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:F}}>{t.clearFilters}</button>}</div>)}
+        {!ld&&shown.length===0&&!sel&&(<div style={{textAlign:"center",padding:"80px 20px",color:mu}}><div style={{fontSize:13,fontWeight:600,color:isDark?"#555":"#aaa",letterSpacing:0.5,marginBottom:8}}>{t.noResults}</div>{activeFilters>0&&<button onClick={()=>{setCond("all");setCat("all");setCatParent("all");setMake("all");setSearch("");}} style={{marginTop:10,background:"transparent",color:mu,border:`1px solid ${border}`,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:F}}>{t.clearFilters}</button>}</div>)}
 
-        {/* -- Grid -- */}
-        {!ld&&shown.length>0&&(<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20}}>
-          {shown.map(item=>(<div key={item.id} onClick={()=>{setSel(item);setImgIdx(0);}} style={{background:card,borderRadius:16,overflow:"hidden",border:`1px solid ${border}`,cursor:"pointer",transition:"transform 0.2s,box-shadow 0.2s,border-color 0.2s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow=isDark?"0 12px 32px rgba(0,0,0,0.5)":"0 12px 32px rgba(0,0,0,0.1)";e.currentTarget.style.borderColor="#dc262644";}} onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";e.currentTarget.style.borderColor=border;}}>
-            <div style={{height:200,background:isDark?"#1a1a22":"#f0f0f5",position:"relative",overflow:"hidden"}}>{(item.images&&item.images[0])?<img src={item.images[0]} alt={item.partName} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",fontSize:52,opacity:0.2}}>&#9881;</div>}{((item.images&&item.images.length)||0)>1&&<div style={{position:"absolute",bottom:10,right:10,background:"rgba(0,0,0,0.6)",color:"#fff",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700}}>+{item.images.length-1}</div>}<div style={{position:"absolute",top:10,left:10}}><span style={{background:COND_C2[item.condition]||"#888",color:"#fff",borderRadius:6,padding:"3px 9px",fontSize:10,fontWeight:800}}>{lang==="en"?(condLabel[item.condition]||item.condition):item.condition}</span></div>{item.category&&<div style={{position:"absolute",bottom:10,left:10,background:"rgba(0,0,0,0.55)",color:"#fff",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:600}}>{item.category}</div>}</div>
-            <div style={{padding:"16px 16px 18px"}}><div style={{fontSize:15,fontWeight:800,color:tx,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.2}}>{item.partName}</div>{item.car&&<div style={{fontSize:12,color:mu,marginBottom:3}}>{item.car}</div>}{item.serialNumber&&<div style={{fontSize:10,color:mu,fontFamily:"monospace",marginBottom:10,opacity:0.7}}>#{item.serialNumber}</div>}<div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginTop:8,borderTop:`1px solid ${border}`,paddingTop:12}}><div style={{fontSize:20,fontWeight:900,color:"#dc2626",letterSpacing:-0.5}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div><div style={{fontSize:11,color:mu,textAlign:"right"}}>{item.pickup||""}</div></div></div>
-          </div>))}
+        {/* -- Row list (Allegro style) -- */}
+        {!ld&&shown.length>0&&!sel&&(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {shown.map(item=>(
+            <div key={item.id} onClick={()=>{setSel(item);setImgIdx(0);window.scrollTo({top:0,behavior:"smooth"});}} style={{background:card,border:`1px solid ${border}`,cursor:"pointer",display:"flex",gap:16,padding:16,transition:"border-color 0.15s,box-shadow 0.15s,transform 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#dc262688";e.currentTarget.style.boxShadow=isDark?"0 4px 16px rgba(0,0,0,0.35)":"0 4px 16px rgba(0,0,0,0.06)";e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=border;e.currentTarget.style.boxShadow="";e.currentTarget.style.transform="";}}>
+              {/* Thumbnail */}
+              <div style={{width:160,height:160,flexShrink:0,background:isDark?"#1a1a22":"#f0f0f5",position:"relative",overflow:"hidden",borderRadius:6}}>
+                {(item.images&&item.images[0])?<img src={item.images[0]} alt={item.partName} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",fontSize:42,opacity:0.15,color:mu}}>&#9881;</div>}
+                {((item.images&&item.images.length)||0)>1&&<div style={{position:"absolute",bottom:6,right:6,background:"rgba(0,0,0,0.7)",color:"#fff",borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:700}}>{item.images.length}</div>}
+              </div>
+              {/* Middle: title, specs */}
+              <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column"}}>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+                  <span style={{background:COND_C2[item.condition]||"#888",color:"#fff",borderRadius:4,padding:"2px 8px",fontSize:10,fontWeight:800,letterSpacing:0.3}}>{lang==="en"?(condLabel[item.condition]||item.condition):item.condition}</span>
+                  {item.category&&<span style={{fontSize:10,color:mu,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5}}>{item.category}</span>}
+                </div>
+                <div style={{fontSize:17,fontWeight:700,color:tx,marginBottom:6,lineHeight:1.3}}>{item.partName}</div>
+                {item.car&&<div style={{fontSize:13,color:isDark?"#bbb":"#555",marginBottom:4}}>{item.car}</div>}
+                {item.serialNumber&&<div style={{fontSize:11,color:mu,fontFamily:"monospace",marginBottom:6}}>OEM: {item.serialNumber}</div>}
+                {item.description&&<div style={{fontSize:12,color:mu,lineHeight:1.5,marginTop:"auto",overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{item.description}</div>}
+              </div>
+              {/* Right: price + actions */}
+              <div style={{minWidth:160,display:"flex",flexDirection:"column",alignItems:"flex-end",justifyContent:"space-between",flexShrink:0,borderLeft:`1px solid ${border}`,paddingLeft:16}}>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:22,fontWeight:900,color:"#dc2626",letterSpacing:-0.5,lineHeight:1}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
+                  {item.pickup&&<div style={{fontSize:11,color:mu,marginTop:4}}>{item.pickup}</div>}
+                </div>
+                <div style={{fontSize:11,color:"#dc2626",fontWeight:600,letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="en"?"View \u203a":"R\u00e9szletek \u203a"}</div>
+              </div>
+            </div>
+          ))}
         </div>)}
 
-        {/* -- Detail modal -- */}
-        {sel&&(<div onClick={()=>setSel(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16,backdropFilter:"blur(4px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:card,borderRadius:20,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto",border:`1px solid ${border}`}}>
-            {((sel.images&&sel.images.length)||0)>0&&(<div style={{position:"relative",height:280,background:isDark?"#1a1a22":"#f0f0f5",borderRadius:"20px 20px 0 0",overflow:"hidden"}}><img src={sel.images[imgIdx]} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>{sel.images.length>1&&(<><button onClick={e=>{e.stopPropagation();setImgIdx(i=>(i-1+sel.images.length)%sel.images.length);}} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.5)",color:"#fff",border:"none",borderRadius:"50%",width:36,height:36,cursor:"pointer",fontSize:18,fontFamily:F}}>&#8249;</button><button onClick={e=>{e.stopPropagation();setImgIdx(i=>(i+1)%sel.images.length);}} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.5)",color:"#fff",border:"none",borderRadius:"50%",width:36,height:36,cursor:"pointer",fontSize:18,fontFamily:F}}>&#8250;</button><div style={{position:"absolute",bottom:12,left:"50%",transform:"translateX(-50%)",display:"flex",gap:5}}>{sel.images.map((_,i)=><div key={i} onClick={e=>{e.stopPropagation();setImgIdx(i);}} style={{width:7,height:7,borderRadius:"50%",background:i===imgIdx?"#fff":"rgba(255,255,255,0.4)",cursor:"pointer"}}/>)}</div></>)}<button onClick={()=>setSel(null)} style={{position:"absolute",top:12,right:12,background:"rgba(0,0,0,0.5)",color:"#fff",border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:16,fontFamily:F}}>&#x2715;</button><span style={{position:"absolute",top:12,left:12,background:COND_C2[sel.condition]||"#888",color:"#fff",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:800}}>{lang==="en"?(condLabel[sel.condition]||sel.condition):sel.condition}</span></div>)}
-            <div style={{padding:"24px 24px 28px"}}>{sel.category&&<div style={{fontSize:11,fontWeight:700,color:"#dc2626",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>{sel.category}</div>}<div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}><h2 style={{fontSize:22,fontWeight:900,color:tx,lineHeight:1.2,flex:1,marginRight:12}}>{sel.partName}</h2></div>{sel.car&&<div style={{fontSize:14,color:mu,marginBottom:10}}><strong style={{color:tx}}>{sel.car}</strong></div>}{sel.serialNumber&&<div style={{background:isDark?"#1a1a22":"#f4f4f8",borderRadius:8,padding:"8px 14px",fontSize:12,fontFamily:"monospace",color:mu,marginBottom:14,display:"flex",gap:8,alignItems:"center"}}><span style={{opacity:0.6}}>#</span>{sel.serialNumber}</div>}{sel.description&&<p style={{fontSize:14,color:isDark?"#c8c8d8":"#444",lineHeight:1.7,marginBottom:18}}>{sel.description}</p>}<div style={{borderTop:`1px solid ${border}`,paddingTop:18,marginBottom:18}}><div style={{fontSize:28,fontWeight:900,color:"#dc2626",letterSpacing:-0.5,marginBottom:10}}>{sel.price?parseInt(sel.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>{sel.pickup&&<div style={{fontSize:13,color:mu,marginBottom:4}}>{t.pickup}: <strong style={{color:tx}}>{sel.pickup}</strong></div>}{sel.contact&&<div style={{fontSize:13,color:mu}}>{t.contact}: <strong style={{color:tx}}>{sel.contact}</strong></div>}</div>{sel.contact&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><a href={`tel:${sel.contact}`} style={{background:"#dc2626",color:"#fff",borderRadius:10,padding:"13px 0",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"block"}}>{t.call}</a><a href={`https://wa.me/${(sel.contact||"").replace(/\D/g,"")}`} target="_blank" rel="noreferrer" style={{background:"#16a34a",color:"#fff",borderRadius:10,padding:"13px 0",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"block"}}>{t.whatsapp}</a></div>)}</div>
+        {/* -- Detail view (Allegro style inline page) -- */}
+        {sel&&(
+          <div style={{background:card,border:`1px solid ${border}`,padding:24,marginBottom:24}}>
+            {/* Back button */}
+            <div style={{marginBottom:20}}>
+              <button onClick={()=>setSel(null)} style={{background:"transparent",border:"none",color:mu,fontSize:12,cursor:"pointer",fontFamily:F,padding:0,display:"flex",alignItems:"center",gap:4}}>
+                {"\u2039 "}{lang==="en"?"Back to list":"Vissza a list\u00e1hoz"}
+              </button>
+            </div>
+
+            {/* Top: breadcrumb + title */}
+            <div style={{marginBottom:16}}>
+              {sel.category&&<div style={{fontSize:11,color:mu,marginBottom:8,letterSpacing:0.5,textTransform:"uppercase",fontWeight:600}}>{sel.category}</div>}
+              <div style={{display:"flex",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                <h1 style={{fontSize:24,fontWeight:800,color:tx,lineHeight:1.3,flex:1,minWidth:250,margin:0}}>{sel.partName}</h1>
+                <span style={{background:COND_C2[sel.condition]||"#888",color:"#fff",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:800,letterSpacing:0.5}}>{lang==="en"?(condLabel[sel.condition]||sel.condition):sel.condition}</span>
+              </div>
+            </div>
+
+            {/* Main row: images center, price/contact right */}
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 320px",gap:24,marginBottom:28,alignItems:"start"}}>
+              {/* Left/Center: Image gallery */}
+              <div>
+                <div style={{position:"relative",background:isDark?"#1a1a22":"#f5f5f8",border:`1px solid ${border}`,borderRadius:4,overflow:"hidden",aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {((sel.images&&sel.images.length)||0)>0?(
+                    <img src={sel.images[imgIdx]} alt={sel.partName} style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+                  ):(
+                    <div style={{fontSize:72,opacity:0.1,color:mu}}>&#9881;</div>
+                  )}
+                  {sel.images&&sel.images.length>1&&(
+                    <>
+                      <button onClick={()=>setImgIdx(i=>(i-1+sel.images.length)%sel.images.length)} style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.9)",border:"none",borderRadius:"50%",width:40,height:40,cursor:"pointer",fontSize:18,fontFamily:F,color:"#111",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}>&#8249;</button>
+                      <button onClick={()=>setImgIdx(i=>(i+1)%sel.images.length)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.9)",border:"none",borderRadius:"50%",width:40,height:40,cursor:"pointer",fontSize:18,fontFamily:F,color:"#111",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}>&#8250;</button>
+                      <div style={{position:"absolute",bottom:10,left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.7)",color:"#fff",borderRadius:12,padding:"3px 10px",fontSize:11,fontWeight:600}}>{imgIdx+1} / {sel.images.length}</div>
+                    </>
+                  )}
+                </div>
+                {/* Thumbnail strip */}
+                {sel.images&&sel.images.length>1&&(
+                  <div style={{display:"flex",gap:6,marginTop:10,overflowX:"auto"}}>
+                    {sel.images.map((src,i)=>(
+                      <button key={i} onClick={()=>setImgIdx(i)} style={{width:72,height:72,padding:0,border:`2px solid ${i===imgIdx?"#dc2626":border}`,borderRadius:4,overflow:"hidden",cursor:"pointer",background:"transparent",flexShrink:0,transition:"border-color 0.15s"}}>
+                        <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Price + contact */}
+              <div style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:80}}>
+                {/* Price box */}
+                <div style={{background:isDark?"#0f0f14":"#fafafc",border:`1px solid ${border}`,borderRadius:4,padding:20}}>
+                  <div style={{fontSize:32,fontWeight:900,color:"#dc2626",letterSpacing:-1,lineHeight:1,marginBottom:4}}>{sel.price?parseInt(sel.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
+                  {sel.pickup&&<div style={{fontSize:12,color:mu,marginTop:10,paddingTop:10,borderTop:`1px solid ${border}`}}>{lang==="en"?"Location: ":"Hely: "}<strong style={{color:tx}}>{sel.pickup}</strong></div>}
+                </div>
+
+                {/* Contact buttons */}
+                {sel.contact&&(
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <a href={"tel:"+sel.contact} style={{background:"#dc2626",color:"#fff",borderRadius:4,padding:"13px 16px",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"block",letterSpacing:0.3}}>{t.call||(lang==="en"?"Call":"Felh\u00edv\u00e1s")}</a>
+                    <a href={"https://wa.me/"+(sel.contact||"").replace(/\D/g,"")} target="_blank" rel="noreferrer" style={{background:"#16a34a",color:"#fff",borderRadius:4,padding:"13px 16px",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"block",letterSpacing:0.3}}>WhatsApp</a>
+                    <div style={{fontSize:11,color:mu,textAlign:"center",marginTop:2}}>{sel.contact}</div>
+                  </div>
+                )}
+
+                {/* Quick facts */}
+                <div style={{background:isDark?"#0f0f14":"#fafafc",border:`1px solid ${border}`,borderRadius:4,padding:16,fontSize:12}}>
+                  {sel.car&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{color:mu}}>{lang==="en"?"Vehicle":"J\u00e1rm\u0171"}</span><strong style={{color:tx,textAlign:"right"}}>{sel.car}</strong></div>}
+                  {sel.serialNumber&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{color:mu}}>OEM</span><strong style={{color:tx,fontFamily:"monospace",fontSize:11}}>{sel.serialNumber}</strong></div>}
+                  {sel.category&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:mu}}>{lang==="en"?"Category":"Kateg\u00f3ria"}</span><strong style={{color:tx}}>{sel.category}</strong></div>}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom: description + more info */}
+            {sel.description&&(
+              <div style={{borderTop:`1px solid ${border}`,paddingTop:24}}>
+                <h3 style={{fontSize:14,fontWeight:800,color:tx,marginTop:0,marginBottom:12,textTransform:"uppercase",letterSpacing:0.5}}>{lang==="en"?"Description":"Le\u00edr\u00e1s"}</h3>
+                <p style={{fontSize:14,color:isDark?"#c8c8d8":"#333",lineHeight:1.7,margin:0,whiteSpace:"pre-wrap"}}>{sel.description}</p>
+              </div>
+            )}
           </div>
-        </div>)}
+        )}
         </div>
       </div>
     </div>
