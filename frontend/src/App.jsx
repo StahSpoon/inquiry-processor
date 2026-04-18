@@ -120,7 +120,7 @@ const INIT_ORDERS=[]
 const SAMPLE_CONVOS=[]
 function makeId(name,zip){
   if(!name)return"-";
-  const acc="\u00c1\u00e1\u00c9\u00e9\u00cd\u00ed\u00d3\u00f3\u00d6\u00f6\u0150\u0151\u00da\u00fa\u00dc\u00fc\u0170\u0171",base="AaEeIiOoOoOoUuUuUu";
+  const acc="ÁáÉéÍíÓóÖöŐőÚúÜüŰű",base="AaEeIiOoOoOoUuUuUu";
   const strip=s=>[...s].map(c=>{const i=acc.indexOf(c);return i>=0?base[i]:c;}).join("").toUpperCase();
   const initials=name.trim().split(" ").filter(Boolean).map(w=>strip(w)[0]||"").join("").slice(0,4);
   return(initials+((zip||"").replace(/[^0-9]/g,""))).slice(0,10)||"-";
@@ -138,7 +138,7 @@ function partsLabel(o){
 }
 function totalQty(o){return getParts(o).reduce((s,p)=>s+(parseInt(p.qty)||1),0);}
 
-const DEFAULT_AI_PROMPT="Te egy Autorra aut\u00f3alkatr\u00e9sz asszisztense vagy (PL\u2192HU logisztika). Professzion\u00e1lisan v\u00e1laszolj az adott csatorna nyelv\u00e9n. Azonos\u00edtsd az alkatr\u00e9sz nev\u00e9t \u00e9s a j\u00e1rm\u0171vet. R\u00f6viden \u00e9s egy\u00e9rtelm\u0171en fogalmazz.";
+const DEFAULT_AI_PROMPT="Te egy Autorra autóalkatrész asszisztense vagy (PL→HU logisztika). Professzionálisan válaszolj az adott csatorna nyelvén. Azonosítsd az alkatrész nevét és a járművet. Röviden és egyértelműen fogalmazz.";
 
 // Timeout helper: rejects if promise doesn't resolve in ms
 const withTimeout=(p,ms,label)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout: "+label)),ms))]);
@@ -699,7 +699,7 @@ function Inbox({onCreateOrder,userName,users=[]}){
             </div>
             <Btn v="subtle" sz="sm" onClick={()=>setNewConvo(true)}>+ Új</Btn>
           </div>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keres\u00e9s..." style={{...inp,padding:"7px 10px",fontSize:11,width:"100%",marginBottom:8}}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keresés..." style={{...inp,padding:"7px 10px",fontSize:11,width:"100%",marginBottom:8}}/>
           <div style={{display:"flex",gap:4}}>
             {[["all","Mind"],["open","Nyitott"],["pending","F\u00fcgg\u0151"],["solved","Megoldott"]].map(([v,l])=>(
               <button key={v} onClick={()=>setStFilter(v)} style={{flex:1,padding:"4px 0",fontSize:10,fontWeight:600,borderRadius:5,border:"none",cursor:"pointer",background:stFilter===v?C.acc:C.s2,color:stFilter===v?"#fff":C.mu,transition:"all 0.15s"}}>{l}</button>
@@ -819,11 +819,11 @@ function Inbox({onCreateOrder,userName,users=[]}){
                 <div style={{flex:1}}/>
                 <select onChange={e=>{if(e.target.value){const isHU=!(CHANNELS[ac.channel]&&CHANNELS[ac.channel].lang)||CHANNELS[ac.channel].lang==="HU";setReply(e.target.value);e.target.value=""}}} style={{...inp,width:"auto",fontSize:11,padding:"4px 8px"}} defaultValue="">
                   <option value="">Sablon...</option>
-                  <option value="K\u00f6sz\u00f6nj\u00fck \u00e9rdekl\u0151d\u00e9s\u00e9t! Miben seg\u00edthet\u00fcnk?">b Üdvözlés</option>
-                  <option value="Az alkatr\u00e9sz k\u00e9szleten van, hamarosan visszajelz\u00fcnk az \u00e1rral.">✓ Készleten</option>
-                  <option value="Sajnos ez az alkatr\u00e9sz jelenleg nem el\u00e9rhet\u0151. Megpr\u00f3b\u00e1lunk alternat\u00edv\u00e1t keresni.">✗ Nincs készleten</option>
-                  <option value="A rendel\u00e9s meg\u00e9rkezett rakt\u00e1runkba, hamarosan sz\u00e1ll\u00edtjuk.">6 Megérkezett</option>
-                  <option value="Az alkatr\u00e9sz \u00e1tvehet\u0151! Mikor tud j\u00f6nni?">9 Átvehető</option>
+                  <option value="Köszönjük érdeklődését! Miben segíthetünk?">b Üdvözlés</option>
+                  <option value="Az alkatrész készleten van, hamarosan visszajelzünk az árral.">✓ Készleten</option>
+                  <option value="Sajnos ez az alkatrész jelenleg nem elérhető. Megpróbálunk alternatívát keresni.">✗ Nincs készleten</option>
+                  <option value="A rendelés megérkezett raktárunkba, hamarosan szállítjuk.">6 Megérkezett</option>
+                  <option value="Az alkatrész átvehető! Mikor tud jönni?">9 Átvehető</option>
                 </select>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
@@ -845,13 +845,13 @@ function Inbox({onCreateOrder,userName,users=[]}){
         <Modal onClose={()=>setNewConvo(false)} width={400}>
           <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.bd}`,fontSize:14,fontWeight:700,color:C.tx}}>Új beszélgetés</div>
           <div style={{padding:20,display:"flex",flexDirection:"column",gap:12}}>
-            <Field label="\u00dcgyf\u00e9l neve" value={nc.contact} onChange={v=>setNc(x=>({...x,contact:v}))} placeholder="pl. Kov\u00e1cs P\u00e9ter"/>
+            <Field label="Ügyfél neve" value={nc.contact} onChange={v=>setNc(x=>({...x,contact:v}))} placeholder="pl. Kovács Péter"/>
             <Field label="Csatorna">
               <select value={nc.channel} onChange={e=>setNc(x=>({...x,channel:e.target.value}))} style={inp}>
                 {Object.entries(CHANNELS).map(([k,v])=><option key={k} value={k}>{v.label} ({v.country})</option>)}
               </select>
             </Field>
-            <Field label="Telefonsz\u00e1m / ID" value={nc.phone} onChange={v=>setNc(x=>({...x,phone:v}))} placeholder="pl. 36201234567"/>
+            <Field label="Telefonszám / ID" value={nc.phone} onChange={v=>setNc(x=>({...x,phone:v}))} placeholder="pl. 36201234567"/>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
               <Btn v="outline" onClick={()=>setNewConvo(false)}>Mégse</Btn>
               <Btn onClick={addNewConvo} disabled={!nc.contact}>Létrehozás</Btn>
@@ -910,9 +910,9 @@ function Inquiry({onOrderCreated,userName}){
 
   return(
     <div>
-      <PH sub="AI feldolgoz\u00e1s">Új érdeklődés</PH>
+      <PH sub="AI feldolgozás">Új érdeklődés</PH>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-        <Field label="\u00dcgyf\u00e9l neve" value={cust} onChange={setCust} placeholder="pl. Kov\u00e1cs P\u00e9ter"/>
+        <Field label="Ügyfél neve" value={cust} onChange={setCust} placeholder="pl. Kovács Péter"/>
         <Field label="Platform">
           <select value={plat} onChange={e=>setPlat(e.target.value)} style={inp}>
             <option>WhatsApp</option>
@@ -922,8 +922,8 @@ function Inquiry({onOrderCreated,userName}){
         </Field>
       </div>
       <div style={{marginBottom:14}}>
-        <Field label="\u00dcgyf\u00e9l \u00fczenet" value={msg} onChange={setMsg}
-          placeholder="Illessze be az \u00fczenetet..." rows={4}/>
+        <Field label="Ügyfél üzenet" value={msg} onChange={setMsg}
+          placeholder="Illessze be az üzenetet..." rows={4}/>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:16}}>
         <Btn onClick={process} disabled={ld||!msg.trim()}>
@@ -984,14 +984,14 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
     setNotify({order,newStatus,msg:tmpl});
     setNotifyLoad(true);
     try{
-      const prompt="Te egy Autorra aut\u00f3alkatr\u00e9sz asszisztense vagy. \u00cdrj r\u00f6vid, szem\u00e9lyes magyar \u00e9rtes\u00edt\u0151 \u00fczenetet az \u00fcgyf\u00e9lnek az al\u00e1bbi adatok alapj\u00e1n. Csak az \u00fczenet sz\u00f6veg\u00e9t \u00edrd, semmi m\u00e1st.";
-      const userMsg="\u00dcgyf\u00e9l: "+order.customer+" | Alkatr\u00e9sz: "+order.part+" | J\u00e1rm\u0171: "+order.car+" | Mennyis\u00e9g: "+order.qty+" db | \u00daj st\u00e1tusz: "+ST[newStatus].label+" | Sablon: "+tmpl;
+      const prompt="Te egy Autorra autóalkatrész asszisztense vagy. Írj rövid, személyes magyar értesítő üzenetet az ügyfélnek az alábbi adatok alapján. Csak az üzenet szövegét írd, semmi mást.";
+      const userMsg="Ügyfél:"+order.customer+" | Alkatr\u00e9sz: "+order.part+" | J\u00e1rm\u0171: "+order.car+" | Mennyis\u00e9g: "+order.qty+" db | \u00daj st\u00e1tusz: "+ST[newStatus].label+" | Sablon: "+tmpl;
       const generated=await ai([{role:"user",content:prompt+"\n\n"+userMsg}]);
       if(generated) setNotify(n=>n?{...n,msg:generated}:n);
     }catch{}
     setNotifyLoad(false);
   };
-  return(<div><PH sub="\u00d6sszes rendel\u00e9s - st\u00e1tusz b\u00e1rmelyik ir\u00e1nyba m\u00f3dos\u00edthat\u00f3">Rendelések</PH><div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}><div style={{flex:1,position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.mu,fontSize:12,pointerEvents:"none"}}>d</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keres\u00e9s \u00fcgyf\u00e9l, alkatr\u00e9sz, aut\u00f3..." style={{...inp,paddingLeft:32}}/></div><select value={filter} onChange={e=>setFilter(e.target.value)} style={{...inp,width:"auto"}}><option value="all">Összes ({orders.length})</option>{SQ.map(s=><option key={s} value={s}>{ST[s].label} ({orders.filter(o=>o.status===s).length})</option>)}</select></div>
+  return(<div><PH sub="Összes rendelés - státusz bármelyik irányba módosítható">Rendelések</PH><div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}><div style={{flex:1,position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.mu,fontSize:12,pointerEvents:"none"}}>d</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keresés ügyfél, alkatrész, autó..." style={{...inp,paddingLeft:32}}/></div><select value={filter} onChange={e=>setFilter(e.target.value)} style={{...inp,width:"auto"}}><option value="all">Összes ({orders.length})</option>{SQ.map(s=><option key={s} value={s}>{ST[s].label} ({orders.filter(o=>o.status===s).length})</option>)}</select></div>
     <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"visible"}}><div style={{display:"grid",gridTemplateColumns:"90px 140px 1fr 55px 165px 85px 110px",padding:"9px 16px",borderBottom:`1px solid ${C.bd}`,background:C.s2,borderRadius:"10px 10px 0 0"}}>{["Platform","\u00dcgyf\u00e9l","Alkatr\u00e9sz / Aut\u00f3","Db","St\u00e1tusz","D\u00e1tum",""].map((h,i)=>(<div key={i} style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8}}>{h.toUpperCase()}</div>))}</div>
     {shown.length===0&&<div style={{padding:32,textAlign:"center",color:C.mu,fontSize:13}}>Nincs találat.</div>}
     {shown.map((o,i)=>{const next=SQ[SQ.indexOf(o.status)+1];const isOpen=detailId===o.id;return(<div key={o.id} style={{borderBottom:i<shown.length-1?`1px solid ${C.bd}`:"none"}}><div onClick={()=>setDetailId(isOpen?null:o.id)} style={{display:"grid",gridTemplateColumns:"90px 140px 1fr 55px 165px 85px 110px",padding:"12px 16px",alignItems:"center",cursor:"pointer",background:isOpen?C.acc+"06":"transparent"}}><div style={{display:"flex",flexDirection:"column",gap:3}}><PBadge p={o.platform}/><span style={{fontSize:9,color:C.mu,fontFamily:"monospace",fontWeight:700}}>{makeId(o.customer,o.zip)}</span></div><div style={{fontSize:13,fontWeight:600,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{o.customer}</div><div style={{paddingRight:8}}><div style={{fontSize:13,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{partsLabel(o)}</div><div style={{fontSize:11,color:C.mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.car}</div></div><div style={{fontSize:13,color:C.t2,fontWeight:getParts(o).length>1?700:400,color:getParts(o).length>1?C.amber:C.t2}}>{totalQty(o)} db</div>
@@ -1039,15 +1039,15 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
         </div>
         <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Field label="\u00dcgyf\u00e9l neve" {...e("customer")}/>
-            <Field label="Ir\u00e1ny\u00edt\u00f3sz\u00e1m" {...e("zip")} placeholder="pl. 2900"/>
-            <Field label="J\u00e1rm\u0171" {...e("car")}/>
+            <Field label="Ügyfél neve" {...e("customer")}/>
+            <Field label="Irányítószám" {...e("zip")} placeholder="pl. 2900"/>
+            <Field label="Jármű" {...e("car")}/>
             <Field label="Platform">
               <select value={ef.platform||"WhatsApp"} onChange={ev=>setEf(x=>({...x,platform:ev.target.value}))} style={inp}>
                 <option>WhatsApp</option><option>Messenger</option><option>Viber</option>
               </select>
             </Field>
-            <Field label="St\u00e1tusz">
+            <Field label="Státusz">
               <select value={ef.status||"pending"} onChange={ev=>setEf(x=>({...x,status:ev.target.value}))} style={inp}>
                 {SQ.map(s=><option key={s} value={s}>{ST[s].label}</option>)}
               </select>
@@ -1061,7 +1061,7 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
                 <input
                   value={p.name||""}
                   onChange={ev=>{const ps=[...ef.parts];ps[pi]={...ps[pi],name:ev.target.value};setEf(x=>({...x,parts:ps}));}}
-                  placeholder="Alkatr\u00e9sz neve"
+                  placeholder="Alkatrész neve"
                   style={{...inp,fontSize:12}}
                 />
                 <input
@@ -1088,7 +1088,7 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
             <Btn v="subtle" sz="sm" onClick={()=>setEf(x=>({...x,parts:[...(x.parts||[]),{name:"",qty:1,allegroLink:""}]}))}>+ Alkatrész hozzáadása</Btn>
           </div>
 
-          <Field label="Megjegyz\u00e9s" {...e("note")} rows={2} placeholder="Bels\u0151 megjegyz\u00e9s..."/>
+          <Field label="Megjegyzés" {...e("note")} rows={2} placeholder="Belső megjegyzés..."/>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
             <Btn v="outline" onClick={()=>setEditing(null)}>Mégse</Btn>
             <Btn onClick={saveEdit} disabled={!(ef.parts||[]).some(p=>(p.name&&p.name.trim()))}>Mentés</Btn>
@@ -1102,7 +1102,7 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
 
 function Krakow({orders,onChange}){
   const items=orders.filter(o=>o.status==="krakow");
-  return(<div><PH sub="\u00c1tv\u00e9telre v\u00e1r\u00f3 csomagok Krakk\u00f3ban">Krakkói raktár</PH>{items.length===0?(<div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center"}}><div style={{fontSize:28,marginBottom:10}}>6</div><div style={{color:C.mu,fontSize:13}}>Nincs csomag a raktárban.</div></div>):(<><div style={{background:C.purple+"10",border:`1px solid ${C.purple}22`,borderRadius:8,padding:"12px 16px",marginBottom:16}}><span style={{color:C.purple,fontWeight:700,fontSize:13}}>6 {items.length} csomag vár a raktárban</span></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden",marginBottom:14}}>{items.map((o,i)=>(<div key={o.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<items.length-1?`1px solid ${C.bd}`:"none"}}><PBadge p={o.platform}/><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:C.tx}}>{o.customer}</div><div style={{fontSize:11,color:C.mu}}>{o.part} · {o.qty} db</div></div><Btn v="outline" sz="sm" onClick={()=>onChange(o.id,{status:"transit"})}>7 Úton van</Btn></div>))}</div><Btn full onClick={()=>items.forEach(o=>onChange(o.id,{status:"transit"}))}>7 Összes csomag - fuvar indítása</Btn></>)}</div>);
+  return(<div><PH sub="Átvételre váró csomagok Krakkóban">Krakkói raktár</PH>{items.length===0?(<div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center"}}><div style={{fontSize:28,marginBottom:10}}>6</div><div style={{color:C.mu,fontSize:13}}>Nincs csomag a raktárban.</div></div>):(<><div style={{background:C.purple+"10",border:`1px solid ${C.purple}22`,borderRadius:8,padding:"12px 16px",marginBottom:16}}><span style={{color:C.purple,fontWeight:700,fontSize:13}}>6 {items.length} csomag vár a raktárban</span></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden",marginBottom:14}}>{items.map((o,i)=>(<div key={o.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<items.length-1?`1px solid ${C.bd}`:"none"}}><PBadge p={o.platform}/><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:C.tx}}>{o.customer}</div><div style={{fontSize:11,color:C.mu}}>{o.part} · {o.qty} db</div></div><Btn v="outline" sz="sm" onClick={()=>onChange(o.id,{status:"transit"})}>7 Úton van</Btn></div>))}</div><Btn full onClick={()=>items.forEach(o=>onChange(o.id,{status:"transit"}))}>7 Összes csomag - fuvar indítása</Btn></>)}</div>);
 }
 
 function PriceCalculator(){
@@ -1195,7 +1195,7 @@ function PriceCalculator(){
 
   return(
     <div>
-      <PH sub="PLN \u00e1tv\u00e1lt\u00e1sa a szomsz\u00e9dos orsz\u00e1gok p\u00e9nznemeibe, fel\u00e1rral">Árkalkulátor</PH>
+      <PH sub="PLN átváltása a szomszédos országok pénznemeibe, felárral">Árkalkulátor</PH>
 
       <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:20,alignItems:"start"}}>
 
@@ -1410,8 +1410,8 @@ function Templates(){
     <div>
       <PH sub="Sablonok">Sablonok</PH>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-        <Section lang="pl" title="\u1f1f5\u1f1f1 Lengyel - elad\u00f3knak" items={plTpl}/>
-        <Section lang="hu" title="\u1f1ed\u1f1fa Magyar - \u00fcgyfeleknek" items={huTpl}/>
+        <Section lang="pl" title="Lengyel - eladóknak" items={plTpl}/>
+        <Section lang="hu" title="Magyar - ügyfeleknek" items={huTpl}/>
       </div>
 
       {editing&&(
@@ -1421,8 +1421,8 @@ function Templates(){
             <Btn v="ghost" sz="sm" onClick={cancelEdit}>✕</Btn>
           </div>
           <div style={{padding:22,display:"flex",flexDirection:"column",gap:12}}>
-            <Field label="Sablon neve" value={editing.title} onChange={v=>setEditing(e=>({...e,title:v}))} placeholder="pl. El\u00e9rhet\u0151s\u00e9g k\u00e9rd\u00e9se"/>
-            <Field label="\u00dczenet sz\u00f6vege" value={editing.text} onChange={v=>setEditing(e=>({...e,text:v}))} rows={5} placeholder="Sablon sz\u00f6vege..."/>
+            <Field label="Sablon neve" value={editing.title} onChange={v=>setEditing(e=>({...e,title:v}))} placeholder="pl. Elérhetőség kérdése"/>
+            <Field label="Üzenet szövege" value={editing.text} onChange={v=>setEditing(e=>({...e,text:v}))} rows={5} placeholder="Sablon szövege..."/>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
               <Btn v="outline" onClick={cancelEdit}>Mégse</Btn>
               <Btn onClick={saveEdit} disabled={!editing.title||!editing.text}>Mentés</Btn>
@@ -1474,17 +1474,18 @@ function CatalogueManager({user}){
   const f=(k)=>({value:form[k]||"",onChange:v=>setField(k,v)});
 
   // Compress image to max 700px before storing
-  const compressImage=(dataUrl)=>new Promise(resolve=>{
+  const compressImage=(dataUrl)=>new Promise((resolve,reject)=>{
     const img=new Image();
     img.onload=()=>{
-      const MAX=700;
+      const MAX=1200; // Higher resolution for public catalogue display
       const scale=Math.min(1,MAX/Math.max(img.width,img.height));
       const canvas=document.createElement("canvas");
       canvas.width=Math.round(img.width*scale);
       canvas.height=Math.round(img.height*scale);
       canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
-      resolve(canvas.toDataURL("image/jpeg",0.75));
+      resolve(canvas.toDataURL("image/jpeg",0.82));
     };
+    img.onerror=()=>reject(new Error("Image decode failed"));
     img.src=dataUrl;
   });
 
@@ -1521,12 +1522,46 @@ function CatalogueManager({user}){
     setAnalyzing(false);
   };
 
+  // Resize for AI: preserve detail for serial reading but cap file size
+  const resizeForAI=(dataUrl)=>new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1800; // High res for AI to read serial numbers, but not phone-original huge
+      const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+      const canvas=document.createElement("canvas");
+      canvas.width=Math.round(img.width*scale);
+      canvas.height=Math.round(img.height*scale);
+      canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+      resolve(canvas.toDataURL("image/jpeg",0.9));
+    };
+    img.onerror=()=>reject(new Error("Image decode failed"));
+    img.src=dataUrl;
+  });
+
   const handleFiles=async(files)=>{
-    const raw=await Promise.all(Array.from(files).map(file=>new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(file);})));
-    const compressed=await Promise.all(raw.map(compressImage));
-    setImages(prev=>[...prev,...compressed]);
-    setRawImages(prev=>[...prev,...raw]);
-    runAI(raw);
+    try{
+      const fileList=Array.from(files);
+      if(fileList.length===0)return;
+      if(fileList.length>10){alert("Maximum 10 kép egyszerre.");return;}
+      // 1. Read all files to base64
+      const raw=await Promise.all(fileList.map(file=>new Promise((res,rej)=>{
+        const r=new FileReader();
+        r.onload=()=>res(r.result);
+        r.onerror=()=>rej(new Error("File read failed: "+file.name));
+        r.readAsDataURL(file);
+      })));
+      // 2. In parallel: create display-sized (1200px) for storage AND ai-sized (1800px) for analysis
+      const[compressed,aiImages]=await Promise.all([
+        Promise.all(raw.map(compressImage)),
+        Promise.all(raw.map(resizeForAI)),
+      ]);
+      setImages(prev=>[...prev,...compressed]);
+      setRawImages(prev=>[...prev,...aiImages]);
+      runAI(aiImages);
+    }catch(e){
+      console.error("File upload failed:",e);
+      alert("Feltöltési hiba: "+(e.message||"ismeretlen"));
+    }
   };
 
   const retryAnalyze=()=>{
@@ -1633,7 +1668,7 @@ function CatalogueManager({user}){
 
           {/* Form fields */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-            <Field label="Alkatr\u00e9sz neve" {...f("partName")} placeholder="pl. Els\u0151 f\u00e9kt\u00e1rcsa"/><Field label="Kateg\u00f3ria">
+            <Field label="Alkatrész neve" {...f("partName")} placeholder="pl. Első féktárcsa"/><Field label="Kategória">
   <div style={{display:"flex",flexDirection:"column",gap:4}}>
     <select value={form._catParent||""} onChange={e=>{setForm(x=>({...x,_catParent:e.target.value,category:""}));}} style={{...inp,fontSize:12}}>
       <option value="">-- Főkategória --</option>
@@ -1648,7 +1683,7 @@ function CatalogueManager({user}){
     {form.category&&<div style={{fontSize:10,color:C.green,marginTop:2}}>✓ {form.category}</div>}
   </div>
 </Field>
-            <Field label="Sorozatsz\u00e1m / OEM" {...f("serialNumber")} placeholder="pl. 1K0615301AA"/>
+            <Field label="Sorozatszám / OEM" {...f("serialNumber")} placeholder="pl. 1K0615301AA"/>
             {form.serialNumberWarning&&<div style={{gridColumn:"1/-1",background:C.amber+"10",border:`1px solid ${C.amber}25`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.amber}}>⚠ {form.serialNumberWarning}</div>}
             {form.serialNumberVerified&&<div style={{gridColumn:"1/-1",background:C.green+"08",border:`1px solid ${C.green}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.t2}}>✓ Ellenőrzés: {form.serialNumberVerified}</div>}
             {form.serialNumber&&learned[form.serialNumber.toUpperCase()]&&(
@@ -1658,23 +1693,23 @@ function CatalogueManager({user}){
                 <button onClick={()=>setForm(x=>({...x,car:learned[form.serialNumber.toUpperCase()].car,partName:learned[form.serialNumber.toUpperCase()].partName}))} style={{marginLeft:"auto",background:C.green+"20",color:C.green,border:"none",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:F}}>Alkalmaz</button>
               </div>
             )}
-            <Field label="Kompatibilis j\u00e1rm\u0171" {...f("car")} placeholder="pl. VW Golf VII 2013-2020"/>
-            <Field label="\u00c1llapot">
+            <Field label="Kompatibilis jármű" {...f("car")} placeholder="pl. VW Golf VII 2013-2020"/>
+            <Field label="Állapot">
               <select value={form.condition||"J\u00f3"} onChange={e=>setField("condition",e.target.value)} style={inp}>
                 {CONDITIONS.map(c=><option key={c}>{c}</option>)}
               </select>
             </Field>
-            <Field label="\u00c1r (Ft)" {...f("price")} placeholder="pl. 25000"/>
+            <Field label="Ár (Ft)" {...f("price")} placeholder="pl. 25000"/>
             {form.estimatedPriceHUF&&!form.price&&(
               <div style={{gridColumn:"1/-1",background:C.blue+"08",border:`1px solid ${C.blue}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.t2,display:"flex",alignItems:"center",gap:8}}>
                 <span>AI árbecslés: ~{Number(form.estimatedPriceHUF).toLocaleString("hu")} Ft{form.priceNote?" - "+form.priceNote:""}</span>
                 <button onClick={()=>setField("price",""+form.estimatedPriceHUF)} style={{marginLeft:"auto",background:C.blue+"20",color:C.blue,border:"none",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:F}}>Használ</button>
               </div>
             )}
-            <Field label="El\u00e9rhet\u0151s\u00e9g" {...f("contact")} placeholder="pl. +36 30 123 4567"/>
-            <Field label="\u00c1tv\u00e9teli hely" {...f("pickup")} placeholder="pl. Budapest XV."/>
+            <Field label="Elérhetőség" {...f("contact")} placeholder="pl. +36 30 123 4567"/>
+            <Field label="Átvételi hely" {...f("pickup")} placeholder="pl. Budapest XV."/>
           </div>
-          <div style={{marginBottom:14}}><Field label="Le\u00edr\u00e1s" {...f("description")} rows={3}/></div>
+          <div style={{marginBottom:14}}><Field label="Leírás" {...f("description")} rows={3}/></div>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
             <Btn v="outline" onClick={()=>{setShowForm(false);setImages([]);setForm(BF);}}>Mégse</Btn>
             <Btn onClick={publish} disabled={saving||!form.partName||!form.price}>{saving?"Ment\u00e9s...":"K\u00f6zz\u00e9t\u00e9tel"}</Btn>
