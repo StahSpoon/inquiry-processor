@@ -663,7 +663,28 @@ function Inbox({onCreateOrder,userName,users=[]}){
     const history=ac.messages.slice(-6).map(m=>(m.from==="in"?"\u00dcgyf\u00e9l: ":"Mi: ")+m.text).join("\n");
     try{
       const txt=await ai([{role:"user",content:`Te egy Autorra aut\u00f3alkatr\u00e9sz AI asszisztense vagy. Az al\u00e1bbi ${lang} nyelv\u0171 besz\u00e9lget\u00e9s alapj\u00e1n adj reszletes professzionalis v\u00e1laszt ${lang} nyelven \u00e9s pontosan hiba nelkul azonos\u00edtsd az \u00e9rdekl\u0151d\u00e9st ha van.\n\nBesz\u00e9lget\u00e9s:\n${history}\n\nV\u00e1laszolj JSON-ban: {"reply":"javasolt v\u00e1lasz allapotfelmeressel ${lang} nyelven","inquiry":{"partName":"alkatr\u00e9sz neve","car":"ALWAYS exact make + model + generation + year e.g. Mercedes-Benz C-Class W204 2010 or BMW 3 Series E90 2008 - NEVER just the brand name alone","quantity":1,"serialNumber":"OEM/part number EXACTLY as written by customer - copy character by character, do NOT interpret or correct - if none mentioned set null","serialNumberConfidence":"high if customer explicitly stated it, low if inferred"}}`}]);
-      const d=JSON.parse(txt.split(String.fromCharCode(96,96,96)+"json").join("").split(String.fromCharCode(96,96,96)).join("").trim());
+      // Extract first balanced JSON object from AI response (handles preamble text)
+      let jsonStr=null;
+      const firstBrace=txt.indexOf("{");
+      if(firstBrace<0)throw new Error("AI válasz nem tartalmaz JSON objektumot. Válasz eleje: "+txt.slice(0,150));
+      let depth=0,inStr=false,esc=false;
+      for(let i=firstBrace;i<txt.length;i++){
+        const ch=txt[i];
+        if(esc){esc=false;continue;}
+        if(inStr){
+          if(ch==="\\"){esc=true;}
+          else if(ch==='"'){inStr=false;}
+          continue;
+        }
+        if(ch==='"'){inStr=true;continue;}
+        if(ch==="{")depth++;
+        else if(ch==="}"){
+          depth--;
+          if(depth===0){jsonStr=txt.slice(firstBrace,i+1);break;}
+        }
+      }
+      if(!jsonStr)throw new Error("Nem található zárt JSON blokk a válaszban.");
+      const d=JSON.parse(jsonStr);
       setAiSugg(d);
     }catch{setAiSugg({reply:"Nem siker\u00fclt az AI elemz\u00e9s.",inquiry:null});}
     setAiLoad(false);
@@ -1501,10 +1522,31 @@ function CatalogueManager({user}){
       const knownSerials=Object.entries(learned).slice(0,20).map(([s,v])=>`${s} = ${v.car} (${v.partName})`).join("\n");
       const msgContent=[
         ...rawImgs.map(b64=>({type:"image",source:{type:"base64",media_type:b64.split(";")[0].split(":")[1],data:b64.split(",")[1]}})),
-        {type:"text",text:`You are an expert auto parts identification specialist.\n\nSTEP 1 - READ SERIAL:\n- Read every character digit by digit exactly as stamped/engraved/printed\n- Common misreads to avoid: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z\n- Note any ambiguous characters in serialNumberWarning\n\nSTEP 2 - LOOK UP SERIAL IN YOUR KNOWLEDGE BASE:\n- Search your training data for this exact OEM/part number\n- What part does this number correspond to? (manufacturer catalog knowledge)\n- Does it match what you visually see in the image? Flag any mismatch in serialNumberVerified\n- What is the retail/wholesale price range for this part in PLN?\n\nSTEP 3 - IDENTIFY CAR FROM SERIAL (OEM prefix knowledge):\n- Mercedes-Benz: A + 3-digit chassis (A205=C-Class W205 2014-2021, A213=E-Class W213 2016+, A166=ML/GL W166, A176=A-Class W176, A117=CLA, A172=SLK)\n- VW/Skoda/Seat: 1K=Golf V/VI MkV, 5K=Golf VI, 5Q=Golf VII, 8P=Audi A3 8P, 8V=Audi A3 8V, 3C=Passat B6\n- BMW: 31xx=E90/E91 3-series, 34xx=brakes, prefix 51=body, 3310=steering; generation from last 2 digits of number\n- Opel: 13xxx, 90xxx series\n- Ford: 1xxx, 2xxx series\n- Use prefix + your knowledge to give FULL: Make + Model + Generation code + Year range\n- e.g. Mercedes-Benz C-Class W205 2014-2021, BMW 3 Series E90 2005-2012\n- NEVER just a brand name - always include model + generation\n- If truly unknown after lookup: null\n${knownSerials?"\\nSTEP 4 - CHECK AGAINST YOUR CORRECTIONS:\\n"+knownSerials:""}\n\nRespond ONLY with valid JSON:\n{"partName":"specific Hungarian part name","serialNumber":"exact digits or null","serialNumberVerified":"cross-reference result","serialNumberWarning":"ambiguous chars or null","serialNumberConfidence":"high/medium/low","car":"make model year or null","condition":"J\u00f3","estimatedPricePLN":0,"estimatedPriceHUF":0,"priceNote":"OEM vs aftermarket range","description":"2-3 sentence Hungarian description"}`}
+        {type:"text",text:`You are an expert auto parts identification specialist.\n\nSTEP 1 - READ SERIAL:\n- Read every character digit by digit exactly as stamped/engraved/printed\n- Common misreads to avoid: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z\n- Note any ambiguous characters in serialNumberWarning\n\nSTEP 2 - LOOK UP SERIAL IN YOUR KNOWLEDGE BASE:\n- Search your training data for this exact OEM/part number\n- What part does this number correspond to? (manufacturer catalog knowledge)\n- Does it match what you visually see in the image? Flag any mismatch in serialNumberVerified\n- What is the retail/wholesale price range for this part in PLN?\n\nSTEP 3 - IDENTIFY CAR FROM SERIAL (OEM prefix knowledge):\n- Mercedes-Benz: A + 3-digit chassis (A205=C-Class W205 2014-2021, A213=E-Class W213 2016+, A166=ML/GL W166, A176=A-Class W176, A117=CLA, A172=SLK)\n- VW/Skoda/Seat: 1K=Golf V/VI MkV, 5K=Golf VI, 5Q=Golf VII, 8P=Audi A3 8P, 8V=Audi A3 8V, 3C=Passat B6\n- BMW: 31xx=E90/E91 3-series, 34xx=brakes, prefix 51=body, 3310=steering; generation from last 2 digits of number\n- Opel: 13xxx, 90xxx series\n- Ford: 1xxx, 2xxx series\n- Use prefix + your knowledge to give FULL: Make + Model + Generation code + Year range\n- e.g. Mercedes-Benz C-Class W205 2014-2021, BMW 3 Series E90 2005-2012\n- NEVER just a brand name - always include model + generation\n- If truly unknown after lookup: null\n${knownSerials?"\\nSTEP 4 - CHECK AGAINST YOUR CORRECTIONS:\\n"+knownSerials:""}\n\nCRITICAL: Your response MUST start with { and end with }. Do NOT write any text before the opening brace. Do NOT say "Looking at" or "I can see" or any preamble. Return ONLY the raw JSON object, nothing else:\n{"partName":"specific Hungarian part name","serialNumber":"exact digits or null","serialNumberVerified":"cross-reference result","serialNumberWarning":"ambiguous chars or null","serialNumberConfidence":"high/medium/low","car":"make model year or null","condition":"J\u00f3","estimatedPricePLN":0,"estimatedPriceHUF":0,"priceNote":"OEM vs aftermarket range","description":"2-3 sentence Hungarian description"}`}
       ];
       const txt=await ai([{role:"user",content:msgContent}]);
-      const d=JSON.parse(txt.split(String.fromCharCode(96,96,96)+"json").join("").split(String.fromCharCode(96,96,96)).join("").trim());
+      // Extract first balanced JSON object from AI response (handles preamble text)
+      let jsonStr=null;
+      const firstBrace=txt.indexOf("{");
+      if(firstBrace<0)throw new Error("AI válasz nem tartalmaz JSON objektumot. Válasz eleje: "+txt.slice(0,150));
+      let depth=0,inStr=false,esc=false;
+      for(let i=firstBrace;i<txt.length;i++){
+        const ch=txt[i];
+        if(esc){esc=false;continue;}
+        if(inStr){
+          if(ch==="\\"){esc=true;}
+          else if(ch==='"'){inStr=false;}
+          continue;
+        }
+        if(ch==='"'){inStr=true;continue;}
+        if(ch==="{")depth++;
+        else if(ch==="}"){
+          depth--;
+          if(depth===0){jsonStr=txt.slice(firstBrace,i+1);break;}
+        }
+      }
+      if(!jsonStr)throw new Error("Nem található zárt JSON blokk a válaszban.");
+      const d=JSON.parse(jsonStr);
       setForm(x=>({...x,
         partName:d.partName||"",
         serialNumber:d.serialNumber||"",
