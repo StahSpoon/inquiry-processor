@@ -266,20 +266,42 @@ function LoginInline({onLogin,theme,lang="hu"}){
 }
 
 
+
+// -- Icon set (inline SVGs, render at any size) --
+const ICON={
+  dashboard:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
+  ai:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L14 8L20 10L14 12L12 18L10 12L4 10L10 8Z"/><path d="M19 15L20 17L22 18L20 19L19 21L18 19L16 18L18 17Z"/></svg>,
+  inbox:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+  inquiry:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  orders:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11V7a3 3 0 0 1 6 0v4"/><rect x="5" y="11" width="14" height="10" rx="2"/></svg>,
+  krakow:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  catalogue:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
+  calculator:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="12" y1="10" x2="12.01" y2="10"/><line x1="16" y1="10" x2="16.01" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="12" y1="14" x2="12.01" y2="14"/><line x1="16" y1="14" x2="16.01" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/><line x1="12" y1="18" x2="12.01" y2="18"/><line x1="16" y1="18" x2="16.01" y2="18"/></svg>,
+  templates:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="18" height="7"/></svg>,
+  customers:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  settings:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  security:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+  sellers:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7h-3V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H4a1 1 0 0 0-1 1v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zM9 5h6v2H9z"/><rect x="9" y="11" width="6" height="5" rx="1"/></svg>,
+  sun:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>,
+  moon:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
+  logout:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  globe:(p)=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+};
+
 const NAV=[
-  {id:"dashboard",label:"Ir\u00e1ny\u00edt\u00f3pult",icon:"\u25a3"},
-  {id:"ai",       label:"AI Elemz\u00e9s",   icon:"\u2726"},
-  {id:"inbox",    label:"Be\u00e9rkez\u0151",     icon:"\u25c9"},
-  {id:"inquiry",  label:"\u00daj \u00e9rdekl\u0151d\u00e9s",icon:"\u27e1"},
-  {id:"orders",   label:"Rendel\u00e9sek",   icon:"\u2261"},
-  {id:"krakow",   label:"Krakk\u00f3i rakt\u00e1r",icon:"\u25c8"},
-  {id:"catalogue",label:"Katal\u00f3gus",    icon:"\u22a1"},
-  {id:"calculator",label:"\u00c1rkalkul\u00e1tor",icon:"\u25ce"},
-  {id:"templates",label:"Sablonok",     icon:"\u25eb"},
-  {id:"customers",label:"Vev\u0151k",         icon:"\u25f7"},
-  {id:"settings", label:"Be\u00e1ll\u00edt\u00e1sok",  icon:"\u2699"},
-  {id:"security", label:"Biztons\u00e1g",     icon:"\u1f512"},
-  {id:"sellers",  label:"Elad\u00f3i bek.",  icon:"\u25c8"},
+  {id:"dashboard",label:"Ir\u00e1ny\u00edt\u00f3pult",icon:"dashboard"},
+  {id:"ai",       label:"AI Elemz\u00e9s",         icon:"ai"},
+  {id:"inbox",    label:"Be\u00e9rkez\u0151",      icon:"inbox"},
+  {id:"inquiry",  label:"\u00daj \u00e9rdekl\u0151d\u00e9s",icon:"inquiry"},
+  {id:"orders",   label:"Rendel\u00e9sek",         icon:"orders"},
+  {id:"krakow",   label:"Krakk\u00f3i rakt\u00e1r",icon:"krakow"},
+  {id:"catalogue",label:"Katal\u00f3gus",          icon:"catalogue"},
+  {id:"calculator",label:"\u00c1rkalkul\u00e1tor",icon:"calculator"},
+  {id:"templates",label:"Sablonok",                 icon:"templates"},
+  {id:"customers",label:"Vev\u0151k",              icon:"customers"},
+  {id:"settings", label:"Be\u00e1ll\u00edt\u00e1sok",icon:"settings"},
+  {id:"security", label:"Biztons\u00e1g",          icon:"security"},
+  {id:"sellers",  label:"Elad\u00f3i bek.",        icon:"sellers"},
 ];
 function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggleTheme}){
   const kn=orders.filter(o=>o.status==="krakow").length;
@@ -299,7 +321,7 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggle
           const a=active===n.id;
           return(
             <button key={n.id} onClick={()=>setActive(n.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 20px",border:"none",cursor:"pointer",width:"100%",textAlign:"left",background:"transparent",borderLeft:a?"2px solid "+C.acc:"2px solid transparent",color:a?"#e8e8e8":"#3a3a3a",fontSize:12,fontWeight:a?600:400,fontFamily:F,transition:"color 0.1s"}}>
-              <span style={{fontSize:10,color:a?C.acc:"#2a2a2a",flexShrink:0}}>{n.icon}</span>
+              <span style={{width:14,height:14,flexShrink:0,color:a?C.acc:C.mu,display:"flex",alignItems:"center",justifyContent:"center"}}>{ICON[n.icon]&&ICON[n.icon]({width:14,height:14})}</span>
               <span style={{flex:1}}>{n.label}</span>
               {n.id==="krakow"&&<Dot n={kn} col={C.purple}/>}
               {n.id==="orders"&&<Dot n={pn} col={C.amber}/>}
@@ -317,7 +339,7 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggle
             <div style={{fontSize:9,color:"#2e2e2e",textTransform:"uppercase",letterSpacing:1}}>{user.role}</div>
           </div>
         </div>
-        <button onClick={onToggleTheme} style={{display:"block",width:"100%",background:"transparent",border:"none",color:C.mu,fontSize:11,cursor:"pointer",padding:"6px 0",fontFamily:F,marginBottom:4}}>{_theme==="light"?"\u1f319 S\u00f6t\u00e9t m\u00f3d":"\u2600 Vil\u00e1gos m\u00f3d"}</button><button onClick={onLogout} style={{background:"transparent",border:"none",color:"#282828",fontSize:10,cursor:"pointer",fontFamily:F,padding:0}}>{"Kijelentkez\u00e9s"}</button>
+        <button onClick={onToggleTheme} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"transparent",border:"none",color:C.mu,fontSize:11,cursor:"pointer",padding:"6px 0",fontFamily:F,marginBottom:4}}><span style={{width:12,height:12,display:"flex",alignItems:"center"}}>{_theme==="light"?ICON.moon({width:12,height:12}):ICON.sun({width:12,height:12})}</span>{_theme==="light"?"S\u00f6t\u00e9t m\u00f3d":"Vil\u00e1gos m\u00f3d"}</button><button onClick={onLogout} style={{background:"transparent",border:"none",color:"#282828",fontSize:10,cursor:"pointer",fontFamily:F,padding:0}}>{"Kijelentkez\u00e9s"}</button>
       </div>
     </div>
   );
@@ -1957,7 +1979,7 @@ function LandingPage({onCatalogue,onAdmin,onLogin,loginOpen,setLoginOpen}){
   // Rotating hero text
   const[heroIdx,setHeroIdx]=useState(0);
   const heroTexts=[
-    {top:"Lengyel alkatr\u00e9sz.",bottom:"Alacsony \u00e1r.",topEn:"Polish parts.",bottomEn:"Low price."},
+    {top:"Lengyel alkatr\u00e9sz.",bottom:"Magyar \u00e1r.",topEn:"Polish parts.",bottomEn:"Hungarian price."},
     {top:"Bontott alkatr\u00e9szek.",bottom:"Ellen\u0151rz\u00f6tt min\u0151s\u00e9g.",topEn:"Used parts.",bottomEn:"Verified quality."},
   ];
   useEffect(()=>{
