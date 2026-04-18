@@ -1467,16 +1467,34 @@ function CatalogueManager({user}){
   const[detail,setDetail]=useState(null);
   const fileRef=useRef();
 
+  // Load images for an item - supports both old (single key) and new (per-image) formats
+  const loadItemImages=async(itemId)=>{
+    // Try new format first: catalogue_imgcount_<id> + catalogue_img_<id>_<index>
+    const count=await db.get("catalogue_imgcount_"+itemId,true);
+    if(typeof count==="number"&&count>0){
+      const imgs=await Promise.all(
+        Array.from({length:count},(_,i)=>db.get("catalogue_img_"+itemId+"_"+i,true))
+      );
+      return imgs.filter(x=>typeof x==="string"&&x.length>0);
+    }
+    // Fallback to old format: catalogue_img_<id> (array)
+    const legacy=await db.get("catalogue_img_"+itemId,true);
+    return Array.isArray(legacy)?legacy:[];
+  };
+
   useEffect(()=>{
-    db.get("catalogue_items",true).then(async d=>{
-      const meta=Array.isArray(d)?d:[];
-      // load images per item separately
-      const withImages=await Promise.all(meta.map(async item=>{
-        const imgs=await db.get("catalogue_img_"+item.id,true);
-        return {...item,images:Array.isArray(imgs)?imgs:[]};
-      }));
-      setItems(withImages);
-    });
+    (async()=>{
+      try{
+        const d=await db.get("catalogue_items",true);
+        const meta=Array.isArray(d)?d:[];
+        console.log("[Autorra] Loaded "+meta.length+" item(s) from catalogue_items");
+        const withImages=await Promise.all(meta.map(async item=>{
+          const imgs=await loadItemImages(item.id);
+          return {...item,images:imgs};
+        }));
+        setItems(withImages);
+      }catch(e){console.error("[Autorra] Load error:",e);setItems([]);}
+    })();
     db.get("parts_learned",true).then(d=>setLearned(d&&typeof d==="object"?d:{}));
   },[]);
 
@@ -1619,23 +1637,27 @@ function CatalogueManager({user}){
     // Strip form internals before saving
     const {_catParent,...formClean}=form;
     const meta={id,...formClean,publishedBy:(user&&user.name)||"?",publishedAt:new Date().toISOString(),sold:false};
-    // Save images to separate keyspace (keeps catalogue_items small, under Turso 5MB cap)
+    // Save images individually per-slot (5MB per-key limit in persistent storage)
     try{
       if(images.length>0){
-        const imgOk=await db.set("catalogue_img_"+id,images,true);
-        if(!imgOk){
-          console.warn("Image save failed - continuing without images");
-          // Continue anyway - metadata still useful
+        console.log("[Autorra] Saving "+images.length+" image(s) for item "+id);
+        // Store each image under catalogue_img_<id>_<index> to stay under per-key limits
+        for(let i=0;i<images.length;i++){
+          const ok=await db.set("catalogue_img_"+id+"_"+i,images[i],true);
+          if(!ok)console.warn("[Autorra] Image "+i+" save failed");
         }
+        // Also save count so loader knows how many to fetch
+        await db.set("catalogue_imgcount_"+id,images.length,true);
       }
-      // Prepend new meta, strip images from existing items for the list
       const metaList=[meta,...items.map(({images:_imgs,...rest})=>rest)];
+      console.log("[Autorra] Saving metadata list with "+metaList.length+" items");
       const metaOk=await db.set("catalogue_items",metaList,true);
       if(!metaOk){
         setSaving(false);
-        alert("Metadata mentés sikertelen. Próbáld újra vagy töröld néhány régi tételt.");
+        alert("Metaadat mentés sikertelen. Talán túl sok régi tétel van - próbáld törölni néhányat.");
         return;
       }
+      console.log("[Autorra] Save complete for "+id);
     }catch(e){
       console.error("Catalogue save failed:",e);
       setSaving(false);
@@ -1646,10 +1668,7 @@ function CatalogueManager({user}){
     try{
       const d=await db.get("catalogue_items",true);
       const metaArr=Array.isArray(d)?d:[];
-      const withImages=await Promise.all(metaArr.map(async m=>{
-        const imgs=await db.get("catalogue_img_"+m.id,true);
-        return {...m,images:Array.isArray(imgs)?imgs:[]};
-      }));
+      const withImages=await Promise.all(metaArr.map(async m=>({...m,images:await loadItemImages(m.id)})));
       setItems(withImages);
     }catch(e){console.error("Reload failed:",e);}
     setShowForm(false);
@@ -1660,7 +1679,18 @@ function CatalogueManager({user}){
   };
 
   const toggleSold=async(id)=>{const u=items.map(i=>i.id===id?{...i,sold:!i.sold}:i);await db.set("catalogue_items",u.map(i=>({...i,images:undefined})),true);setItems(u);};
-  const remove=async(id)=>{const u=items.filter(i=>i.id!==id);await db.set("catalogue_items",u.map(i=>({...i,images:undefined})),true);await db.set("catalogue_img_"+id,[],true);setItems(u);if((detail&&detail.id)===id)setDetail(null);};
+  const remove=async(id)=>{
+    if(!confirm("Biztosan törlöd?"))return;
+    const u=items.filter(i=>i.id!==id);
+    await db.set("catalogue_items",u.map(({images:_imgs,...rest})=>rest),true);
+    // Clean up image keys (best-effort)
+    const cnt=await db.get("catalogue_imgcount_"+id,true);
+    if(typeof cnt==="number"){
+      for(let i=0;i<cnt;i++)await db.set("catalogue_img_"+id+"_"+i,null,true);
+      await db.set("catalogue_imgcount_"+id,null,true);
+    }
+    setItems(u);
+  };
 
   const COND_ADMIN={"J\u00f3":C.green,Bontott:C.amber,"Hib\u00e1s":C.acc,"Fel\u00faj\u00edtott":C.blue};
   const condColor=(c)=>COND_ADMIN[c]||C.mu;
@@ -1840,17 +1870,27 @@ function PublicCatalogue({onBack,onAdmin}){
   const[theme,setTheme]=useState(_theme);
   const isDark=theme==="dark";
 
+  const loadImages=async(itemId)=>{
+    const count=await db.get("catalogue_imgcount_"+itemId,true);
+    if(typeof count==="number"&&count>0){
+      const imgs=await Promise.all(Array.from({length:count},(_,i)=>db.get("catalogue_img_"+itemId+"_"+i,true)));
+      return imgs.filter(x=>typeof x==="string"&&x.length>0);
+    }
+    const legacy=await db.get("catalogue_img_"+itemId,true);
+    return Array.isArray(legacy)?legacy:[];
+  };
+
   useEffect(()=>{
-    db.get("catalogue_items",true)
-      .then(async d=>{
+    (async()=>{
+      try{
+        const d=await db.get("catalogue_items",true);
         const meta=Array.isArray(d)?d.filter(i=>!i.sold):[];
-        const withImages=await Promise.all(meta.map(async item=>{
-          const imgs=await db.get("catalogue_img_"+item.id,true);
-          return {...item,images:Array.isArray(imgs)?imgs:[]};
-        }));
-setItems(withImages);setLd(false);
-      })
-      .catch(e=>{console.error("[Autorra] Load error:",e);setItems([]);setLd(false);});
+        console.log("[Autorra public] Loaded "+meta.length+" item(s)");
+        const withImages=await Promise.all(meta.map(async item=>({...item,images:await loadImages(item.id)})));
+        setItems(withImages);
+      }catch(e){console.error("[Autorra public] Load error:",e);setItems([]);}
+      setLd(false);
+    })();
   },[]);
 
   const shown=items.filter(i=>{
