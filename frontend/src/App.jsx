@@ -1166,7 +1166,7 @@ function PriceCalculator(){
   const plnVal=parseFloat(pln)||0;
   const mult=1+(markup/100);
   const hasRates=Object.keys(rates).length>0;
-  const ts=(lastFetch&&lastFetch.toLocaleTimeString)("hu",{hour:"2-digit",minute:"2-digit"});
+  const ts=lastFetch?lastFetch.toLocaleTimeString("hu",{hour:"2-digit",minute:"2-digit"}):"";
 
   const statusCfg={
     idle:    {dot:C.mu,   text:"Kattintson az \u00e9l\u0151 \u00e1rfolyam let\u00f6lt\u00e9s\u00e9hez"},
@@ -1471,16 +1471,18 @@ function CatalogueManager({user}){
     img.src=dataUrl;
   });
 
-  const handleFiles=async(files)=>{
-    const raw=await Promise.all(Array.from(files).map(file=>new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(file);})));
-    const compressed=await Promise.all(raw.map(compressImage));
-    setImages(prev=>[...prev,...compressed]); // store compressed
+  // Keep raw images separately for re-analysis
+  const[rawImages,setRawImages]=useState([]);
+  
+  const runAI=async(rawImgs)=>{
+    if(!rawImgs||rawImgs.length===0){setAnalyzing(false);return;}
     setAnalyzing(true);
+    // Timeout guard: fail after 45 seconds
+    const timeoutId=setTimeout(()=>{setAnalyzing(false);alert("AI elemz\u00e9s id\u0151t\u00fall\u00e9p\u00e9s. Pr\u00f3b\u00e1ld \u00fajra.");},45000);
     try{
-      // Send ORIGINAL uncompressed images to AI for accurate serial reading
       const knownSerials=Object.entries(learned).slice(0,20).map(([s,v])=>`${s} = ${v.car} (${v.partName})`).join("\n");
       const msgContent=[
-        ...raw.map(b64=>({type:"image",source:{type:"base64",media_type:b64.split(";")[0].split(":")[1],data:b64.split(",")[1]}})),
+        ...rawImgs.map(b64=>({type:"image",source:{type:"base64",media_type:b64.split(";")[0].split(":")[1],data:b64.split(",")[1]}})),
         {type:"text",text:`You are an expert auto parts identification specialist.\n\nSTEP 1 - READ SERIAL:\n- Read every character digit by digit exactly as stamped/engraved/printed\n- Common misreads to avoid: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z\n- Note any ambiguous characters in serialNumberWarning\n\nSTEP 2 - LOOK UP SERIAL IN YOUR KNOWLEDGE BASE:\n- Search your training data for this exact OEM/part number\n- What part does this number correspond to? (manufacturer catalog knowledge)\n- Does it match what you visually see in the image? Flag any mismatch in serialNumberVerified\n- What is the retail/wholesale price range for this part in PLN?\n\nSTEP 3 - IDENTIFY CAR FROM SERIAL (OEM prefix knowledge):\n- Mercedes-Benz: A + 3-digit chassis (A205=C-Class W205 2014-2021, A213=E-Class W213 2016+, A166=ML/GL W166, A176=A-Class W176, A117=CLA, A172=SLK)\n- VW/Skoda/Seat: 1K=Golf V/VI MkV, 5K=Golf VI, 5Q=Golf VII, 8P=Audi A3 8P, 8V=Audi A3 8V, 3C=Passat B6\n- BMW: 31xx=E90/E91 3-series, 34xx=brakes, prefix 51=body, 3310=steering; generation from last 2 digits of number\n- Opel: 13xxx, 90xxx series\n- Ford: 1xxx, 2xxx series\n- Use prefix + your knowledge to give FULL: Make + Model + Generation code + Year range\n- e.g. Mercedes-Benz C-Class W205 2014-2021, BMW 3 Series E90 2005-2012\n- NEVER just a brand name - always include model + generation\n- If truly unknown after lookup: null\n${knownSerials?"\\nSTEP 4 - CHECK AGAINST YOUR CORRECTIONS:\\n"+knownSerials:""}\n\nRespond ONLY with valid JSON:\n{"partName":"specific Hungarian part name","serialNumber":"exact digits or null","serialNumberVerified":"cross-reference result","serialNumberWarning":"ambiguous chars or null","serialNumberConfidence":"high/medium/low","car":"make model year or null","condition":"J\u00f3","estimatedPricePLN":0,"estimatedPriceHUF":0,"priceNote":"OEM vs aftermarket range","description":"2-3 sentence Hungarian description"}`}
       ];
       const txt=await ai([{role:"user",content:msgContent}]);
@@ -1497,42 +1499,62 @@ function CatalogueManager({user}){
         estimatedPriceHUF:d.estimatedPriceHUF?""+d.estimatedPriceHUF:"",
         priceNote:d.priceNote||"",
       }));
-    }catch(e){console.error("AI analyse error:",e);}
+    }catch(e){console.error("AI analyse error:",e);alert("AI elemz\u00e9si hiba: "+(e.message||"ismeretlen"));}
+    clearTimeout(timeoutId);
     setAnalyzing(false);
   };
 
+  const handleFiles=async(files)=>{
+    const raw=await Promise.all(Array.from(files).map(file=>new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(file);})));
+    const compressed=await Promise.all(raw.map(compressImage));
+    setImages(prev=>[...prev,...compressed]);
+    setRawImages(prev=>[...prev,...raw]);
+    runAI(raw);
+  };
+
+  const retryAnalyze=()=>{
+    if(rawImages.length===0){alert("Nincs k\u00e9p az \u00fajraelemz\u00e9shez.");return;}
+    runAI(rawImages);
+  };
+
   const publish=async()=>{
-    if(!form.partName||!form.price)return;
+    if(!form.partName||!form.price){alert("Alkatr\u00e9sz neve \u00e9s \u00e1ra k\u00f6telez\u0151.");return;}
     setSaving(true);
     if(form.serialNumber&&form.car) await saveLearn(form.serialNumber,form.car,form.partName);
     const id=Date.now();
-    // Save images separately (keeps catalogue_items small)
-    if(images.length>0){
-      const ok=await db.set("catalogue_img_"+id,images,true);
-      if(!ok)console.warn("Image save may have failed");
-    }
-    // Save metadata without images
-    const{_catParent,...formClean}=form;const item={id,...formClean,images,publishedBy:(user&&user.name)||"?",publishedAt:new Date().toISOString(),sold:false};
+    // Strip form internals before saving
+    const {_catParent,...formClean}=form;
     const meta={id,...formClean,publishedBy:(user&&user.name)||"?",publishedAt:new Date().toISOString(),sold:false};
-    const metaList=[meta,...items.map(i=>({...i,images:undefined}))];
+    // Save images to separate keyspace (keeps catalogue_items small, under Turso 5MB cap)
     try{
+      if(images.length>0){
+        const ok=await db.set("catalogue_img_"+id,images,true);
+        if(!ok)console.warn("Image save returned falsy - item will be listed without images");
+      }
+      // Prepend new meta, strip images from existing items for the list
+      const metaList=[meta,...items.map(({images:_imgs,...rest})=>rest)];
       await db.set("catalogue_items",metaList,true);
     }catch(e){
-      console.error("Metadata save failed:",e);
+      console.error("Catalogue save failed:",e);
       setSaving(false);
-      alert("Ment\u00e9s sikertelen. Ellen\u0151rizd a kapcsolatot \u00e9s pr\u00f3b\u00e1ld \u00fajra.");
+      alert("Ment\u00e9s sikertelen: "+(e.message||"ismeretlen hiba")+". Ellen\u0151rizd a kapcsolatot.");
       return;
     }
-    // Reload from storage to ensure consistency
-    db.get("catalogue_items",true).then(async d=>{
-      const meta=Array.isArray(d)?d:[];
-      const withImages=await Promise.all(meta.map(async m=>{
+    // Reload from storage to ensure consistency with the public catalogue
+    try{
+      const d=await db.get("catalogue_items",true);
+      const metaArr=Array.isArray(d)?d:[];
+      const withImages=await Promise.all(metaArr.map(async m=>{
         const imgs=await db.get("catalogue_img_"+m.id,true);
         return {...m,images:Array.isArray(imgs)?imgs:[]};
       }));
       setItems(withImages);
-    });
-    setShowForm(false);setImages([]);setForm(BF);setSaving(false);
+    }catch(e){console.error("Reload failed:",e);}
+    setShowForm(false);
+    setImages([]);
+    setRawImages([]);
+    setForm(BF);
+    setSaving(false);
   };
 
   const toggleSold=async(id)=>{const u=items.map(i=>i.id===id?{...i,sold:!i.sold}:i);await db.set("catalogue_items",u.map(i=>({...i,images:undefined})),true);setItems(u);};
@@ -1546,7 +1568,7 @@ function CatalogueManager({user}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
         <PH sub="Katalogus">{"Katal\u00f3gus"}</PH>
         <div style={{display:"flex",gap:8}}>
-          <Btn v="outline" sz="sm" onClick={()=>{setShowForm(false);window.__setPublic?.(true);}}>{" Nyilv\u00e1nos n\u00e9zet"}</Btn>
+          <Btn v="outline" sz="sm" onClick={()=>{setShowForm(false);window.__setPublic&&window.__setPublic(true);}}>{"Nyilv\u00e1nos n\u00e9zet"}</Btn>
           <Btn onClick={()=>setShowForm(f=>!f)}>{showForm?"\u2715 M\u00e9gse":"+ \u00daj alkatr\u00e9sz"}</Btn>
         </div>
       </div>
@@ -1570,11 +1592,15 @@ function CatalogueManager({user}){
                   ))}
                   <div style={{height:72,width:72,border:`2px dashed ${C.bd2}`,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:C.mu,fontSize:22}}>+</div>
                 </div>
-                <div style={{fontSize:11,color:analyzing?C.amber:C.green,fontWeight:600}}>{analyzing?"\u27f3 AI elemz\u00e9s folyamatban...":"\u2713 Felt\u00f6ltve - szerkeszd az adatokat"}</div>
+                <div style={{display:"flex",alignItems:"center",gap:10,fontSize:11,fontWeight:600}}>
+                  <span style={{color:analyzing?C.amber:C.green}}>{analyzing?"\u27f3 AI elemz\u00e9s folyamatban...":"\u2713 Felt\u00f6ltve - szerkeszd az adatokat"}</span>
+                  {!analyzing&&images.length>0&&<button onClick={ev=>{ev.stopPropagation();retryAnalyze();}} style={{padding:"4px 10px",background:"transparent",border:`1px solid ${C.acc}40`,color:C.acc,fontSize:10,fontWeight:600,cursor:"pointer",borderRadius:4,fontFamily:F}}>{"\u21bb \u00dajra elemz\u00e9s"}</button>}
+                  {analyzing&&<button onClick={ev=>{ev.stopPropagation();setAnalyzing(false);}} style={{padding:"4px 10px",background:"transparent",border:`1px solid ${C.mu}40`,color:C.mu,fontSize:10,fontWeight:600,cursor:"pointer",borderRadius:4,fontFamily:F}}>{"M\u00e9gse"}</button>}
+                </div>
               </div>
             ):(
               <div>
-                <div style={{fontSize:24,marginBottom:6}}>7</div>
+                <div style={{fontSize:24,marginBottom:6,color:C.mu}}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
                 <div style={{fontSize:13,color:C.mu}}>{"Kattints a k\u00e9pek felt\u00f6lt\u00e9s\u00e9hez - AI automatikusan felismeri az alkatr\u00e9szt"}</div>
               </div>
             )}
@@ -1586,12 +1612,12 @@ function CatalogueManager({user}){
   <div style={{display:"flex",flexDirection:"column",gap:4}}>
     <select value={form._catParent||""} onChange={e=>{setForm(x=>({...x,_catParent:e.target.value,category:""}));}} style={{...inp,fontSize:12}}>
       <option value="">{"-- F\u0151kateg\u00f3ria --"}</option>
-      {PART_CAT_TREE.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+      {PART_CAT_TREE.map(c=><option key={c.id} value={c.id}>{c.hu}</option>)}
     </select>
     {form._catParent&&(
       <select value={form.category||""} onChange={e=>setField("category",e.target.value)} style={{...inp,fontSize:12}}>
         <option value="">{"-- Alkateg\u00f3ria --"}</option>
-        {(PART_CAT_TREE.find(c=>c.id===form._catParent)?.sub||[]).map(s=><option key={s} value={s}>{s}</option>)}
+        {((PART_CAT_TREE.find(c=>c.id===form._catParent)||{sub:{hu:[]}}).sub.hu||[]).map(s=><option key={s} value={s}>{s}</option>)}
       </select>
     )}
     {form.category&&<div style={{fontSize:10,color:C.green,marginTop:2}}>\u2713 {form.category}</div>}
@@ -1602,7 +1628,7 @@ function CatalogueManager({user}){
             {form.serialNumberVerified&&<div style={{gridColumn:"1/-1",background:C.green+"08",border:`1px solid ${C.green}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.t2}}>\u2713 Ellen\u0151rz\u00e9s: {form.serialNumberVerified}</div>}
             {form.serialNumber&&learned[form.serialNumber.toUpperCase()]&&(
               <div style={{gridColumn:"1/-1",background:C.green+"08",border:`1px solid ${C.green}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.green,display:"flex",alignItems:"center",gap:6}}>
-                <span></span>
+                <span>{"\u2713"}</span>
                 <span>Tanult: <strong>{learned[form.serialNumber.toUpperCase()].car}</strong> \u00b7 {learned[form.serialNumber.toUpperCase()].partName}</span>
                 <button onClick={()=>setForm(x=>({...x,car:learned[form.serialNumber.toUpperCase()].car,partName:learned[form.serialNumber.toUpperCase()].partName}))} style={{marginLeft:"auto",background:C.green+"20",color:C.green,border:"none",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:F}}>Alkalmaz</button>
               </div>
@@ -1616,7 +1642,7 @@ function CatalogueManager({user}){
             <Field label="\u00c1r (Ft)" {...f("price")} placeholder="pl. 25000"/>
             {form.estimatedPriceHUF&&!form.price&&(
               <div style={{gridColumn:"1/-1",background:C.blue+"08",border:`1px solid ${C.blue}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.t2,display:"flex",alignItems:"center",gap:8}}>
-                <span>1 AI \u00e1rbecsl\u00e9s: ~{Number(form.estimatedPriceHUF).toLocaleString("hu")} Ft{form.priceNote?" - "+form.priceNote:""}</span>
+                <span>AI \u00e1rbecsl\u00e9s: ~{Number(form.estimatedPriceHUF).toLocaleString("hu")} Ft{form.priceNote?" - "+form.priceNote:""}</span>
                 <button onClick={()=>setField("price",""+form.estimatedPriceHUF)} style={{marginLeft:"auto",background:C.blue+"20",color:C.blue,border:"none",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:F}}>{"Haszn\u00e1l"}</button>
               </div>
             )}
@@ -1634,7 +1660,7 @@ function CatalogueManager({user}){
       {/* Items list */}
       {items.length===0&&!showForm&&(
         <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center",color:C.mu}}>
-          <div style={{fontSize:32,marginBottom:12}}>9</div>
+          <div style={{fontSize:32,marginBottom:12,color:C.mu}}><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
           <div style={{fontSize:13}}>{"Nincs alkatr\u00e9sz. Kattints az \u00daj alkatr\u00e9sz gombra!"}</div>
         </div>
       )}
@@ -1655,13 +1681,13 @@ function CatalogueManager({user}){
                   <span style={{background:condColor(item.condition)+"20",color:condColor(item.condition),borderRadius:4,padding:"1px 6px",fontSize:9,fontWeight:700,flexShrink:0}}>{item.condition}</span>
                 </div>
                 <div style={{fontSize:11,color:C.mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                  {item.car&&<span>7 {item.car}</span>}
+                  {item.car&&<span>{item.car}</span>}
                   {item.serialNumber&&<span style={{marginLeft:8,fontFamily:"monospace"}}>#{item.serialNumber}</span>}
                 </div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
                 <div style={{fontSize:16,fontWeight:800,color:C.acc}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":"-"}</div>
-                <div style={{fontSize:10,color:C.mu}}>d {item.pickup||"-"}</div>
+                <div style={{fontSize:10,color:C.mu}}>{item.pickup||"-"}</div>
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0}}>
                 <Btn v="outline" sz="sm" onClick={e=>{e.stopPropagation();toggleSold(item.id);}}>{item.sold?"Akt\u00edv":"Eladva"}</Btn>
