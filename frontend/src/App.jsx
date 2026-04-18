@@ -1458,6 +1458,7 @@ function Templates(){
 const BF={partName:"",category:"",_catParent:"",serialNumber:"",serialNumberVerified:"",serialNumberWarning:"",serialNumberConfidence:"",car:"",condition:"J\u00f3",price:"",estimatedPriceHUF:"",priceNote:"",contact:"",pickup:"",description:""};
 function CatalogueManager({user}){
   const[items,setItems]=useState([]);
+  const[loaded,setLoaded]=useState(false);
   const[learned,setLearned]=useState({});
   const[showForm,setShowForm]=useState(false);
   const[images,setImages]=useState([]);
@@ -1482,20 +1483,24 @@ function CatalogueManager({user}){
     return Array.isArray(legacy)?legacy:[];
   };
 
+  const refreshItems=async()=>{
+    try{
+      const d=await db.get("catalogue_items",true);
+      const meta=Array.isArray(d)?d:[];
+      console.log("[Autorra admin] Refresh: "+meta.length+" items in storage");
+      const withImages=await Promise.all(meta.map(async item=>({...item,images:await loadItemImages(item.id)})));
+      setItems(withImages);
+      setLoaded(true);
+    }catch(e){console.error("[Autorra admin] Refresh error:",e);setLoaded(true);}
+  };
+
   useEffect(()=>{
-    (async()=>{
-      try{
-        const d=await db.get("catalogue_items",true);
-        const meta=Array.isArray(d)?d:[];
-        console.log("[Autorra] Loaded "+meta.length+" item(s) from catalogue_items");
-        const withImages=await Promise.all(meta.map(async item=>{
-          const imgs=await loadItemImages(item.id);
-          return {...item,images:imgs};
-        }));
-        setItems(withImages);
-      }catch(e){console.error("[Autorra] Load error:",e);setItems([]);}
-    })();
+    console.log("[Autorra admin] CatalogueManager mounted");
+    refreshItems();
     db.get("parts_learned",true).then(d=>setLearned(d&&typeof d==="object"?d:{}));
+    // Periodic refresh every 30s to catch external changes (seller submissions, etc)
+    const iv=setInterval(refreshItems,30000);
+    return()=>clearInterval(iv);
   },[]);
 
   const saveLearn=async(serial,car,partName)=>{
@@ -1631,6 +1636,12 @@ function CatalogueManager({user}){
 
   const publish=async()=>{
     if(!form.partName||!form.price){alert("Alkatr\u00e9sz neve \u00e9s \u00e1ra k\u00f6telez\u0151.");return;}
+    if(!loaded){
+      // Force a fresh load to avoid overwriting with stale state
+      const d=await db.get("catalogue_items",true);
+      const meta=Array.isArray(d)?d:[];
+      setItems(await Promise.all(meta.map(async m=>({...m,images:await loadItemImages(m.id)}))));
+    }
     setSaving(true);
     if(form.serialNumber&&form.car) await saveLearn(form.serialNumber,form.car,form.partName);
     const id=Date.now();
@@ -1932,7 +1943,7 @@ function PublicCatalogue({onBack,onAdmin}){
           </div>
           <div style={{display:"flex",gap:12,alignItems:"center"}}>
             <button onClick={()=>switchLang(lang==="hu"?"en":"hu")} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:700,cursor:"pointer",color:mu,fontFamily:F,letterSpacing:0.5}}>{lang==="hu"?"EN":"HU"}</button>
-            <button onClick={()=>{const t=theme==="light"?"dark":"light";applyTheme(t);setTheme(t);}} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",color:mu,fontFamily:F}}>{isDark?"Light":"Dark"}</button>
+            <button onClick={()=>{const t=theme==="light"?"dark":"light";applyTheme(t);setTheme(t);}} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"6px 10px",cursor:"pointer",color:mu,fontFamily:F,display:"flex",alignItems:"center",justifyContent:"center",width:32,height:30}}>{isDark?ICON.sun({width:14,height:14}):ICON.moon({width:14,height:14})}</button>
             {onAdmin&&<button onClick={onAdmin} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:600,color:mu,cursor:"pointer",fontFamily:F,minWidth:72,textAlign:"center"}}>{lang==="en"?"Login":"Belepes"}</button>}
           </div>
         </div>
@@ -2103,29 +2114,31 @@ function MainApp({user,onLogout,onPublic,onToggleTheme}){
   const updateOrder=async(o)=>{await saveOrders(orders.map(x=>x.id===o.id?o:x));};
   const deleteOrder=async(id)=>{await saveOrders(orders.filter(x=>x.id!==id));};
 
-  const panels={
-    dashboard:()=><Dashboard orders={orders} convos={convos} onNav={setActive}/>,
-    ai:()=><AiDashboard orders={orders}/>,
-    inbox:()=><Inbox onCreateOrder={addOrder} userName={user&&user.name}/>,
-    inquiry:()=><Inquiry onOrderCreated={addOrder} userName={user&&user.name}/>,
-    orders:()=><Orders orders={orders} onChange={updateOrder} onDelete={deleteOrder}/>,
-    krakow:()=><Krakow orders={orders} onChange={updateOrder}/>,
-    catalogue:()=><CatalogueManager user={user}/>,
-    calculator:()=><PriceCalculator/>,
-    templates:()=><Templates/>,
-    customers:()=><Customers orders={orders}/>,
-    settings:()=><Settings user={user}/>,
-    security:()=><SecurityPanel user={user}/>,
-    sellers:()=><SellerSubmissions/>,
+  // Render directly rather than wrapping in anon functions (preserves component identity across tab switches)
+  const renderPanel=()=>{
+    switch(active){
+      case "ai":return <AiDashboard orders={orders}/>;
+      case "inbox":return <Inbox onCreateOrder={addOrder} userName={user&&user.name}/>;
+      case "inquiry":return <Inquiry onOrderCreated={addOrder} userName={user&&user.name}/>;
+      case "orders":return <Orders orders={orders} onChange={updateOrder} onDelete={deleteOrder}/>;
+      case "krakow":return <Krakow orders={orders} onChange={updateOrder}/>;
+      case "catalogue":return <CatalogueManager user={user}/>;
+      case "calculator":return <PriceCalculator/>;
+      case "templates":return <Templates/>;
+      case "customers":return <Customers orders={orders}/>;
+      case "settings":return <Settings user={user}/>;
+      case "security":return <SecurityPanel user={user}/>;
+      case "sellers":return <SellerSubmissions/>;
+      default:return <Dashboard orders={orders} convos={convos} onNav={setActive}/>;
+    }
   };
-  const Panel=panels[active]||panels.dashboard;
 
   return(
     <div style={{display:"flex",minHeight:"100vh",background:C.bg,fontFamily:F,color:C.tx}}>
       <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
       <Sidebar active={active} setActive={setActive} user={user} onLogout={onLogout} onPublic={onPublic} orders={orders} convos={convos} onToggleTheme={onToggleTheme}/>
       <div style={{flex:1,padding:"24px 32px",overflowY:"auto"}}>
-        <Panel/>
+        {renderPanel()}
       </div>
     </div>
   );
@@ -2165,7 +2178,7 @@ function LandingPage({onCatalogue,onAdmin,onLogin,loginOpen,setLoginOpen}){
         <div style={{fontSize:22,fontWeight:900,letterSpacing:-0.5}}>auto<span style={{color:"#dc2626"}}>rra</span><span style={{fontSize:10,fontWeight:600,color:"#888",marginLeft:6,letterSpacing:1,textTransform:"uppercase"}}>hu</span></div>
         <div style={{display:"flex",gap:12,alignItems:"center"}}>
           <button onClick={()=>setLandingLang(l=>l==="hu"?"en":"hu")} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:700,cursor:"pointer",color:mu,fontFamily:F,letterSpacing:0.5}}>{landingLang==="hu"?"EN":"HU"}</button>
-          <button onClick={toggleTheme} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",color:mu,fontFamily:F}}>{isDark?"Light":"Dark"}</button>
+          <button onClick={toggleTheme} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"6px 10px",cursor:"pointer",color:mu,fontFamily:F,display:"flex",alignItems:"center",justifyContent:"center",width:32,height:30}}>{isDark?ICON.sun({width:14,height:14}):ICON.moon({width:14,height:14})}</button>
           <div style={{position:"relative"}}>
             <button onClick={e=>{e.stopPropagation();setLoginOpen(v=>!v);}} style={{background:"transparent",border:`1px solid ${isDark?"#333":"#ddd"}`,borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:600,color:mu,cursor:"pointer",fontFamily:F,minWidth:72,textAlign:"center"}}>{landingLang==="en"?"Login":"Bel\u00e9p\u00e9s"}</button>
             {loginOpen&&(
