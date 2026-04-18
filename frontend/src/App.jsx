@@ -140,9 +140,26 @@ function totalQty(o){return getParts(o).reduce((s,p)=>s+(parseInt(p.qty)||1),0);
 
 const DEFAULT_AI_PROMPT="Te egy Autorra aut\u00f3alkatr\u00e9sz asszisztense vagy (PL\u2192HU logisztika). Professzion\u00e1lisan v\u00e1laszolj az adott csatorna nyelv\u00e9n. Azonos\u00edtsd az alkatr\u00e9sz nev\u00e9t \u00e9s a j\u00e1rm\u0171vet. R\u00f6viden \u00e9s egy\u00e9rtelm\u0171en fogalmazz.";
 
+// Timeout helper: rejects if promise doesn't resolve in ms
+const withTimeout=(p,ms,label)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout: "+label)),ms))]);
+
 const db={
-  async get(k,sh=false){try{const r=await window.storage.get(k,sh);return r?JSON.parse(r.value):null;}catch{return null;}},
-  async set(k,v,sh=false){try{await window.storage.set(k,JSON.stringify(v),sh);}catch{}},
+  async get(k,sh=false){
+    try{
+      if(!window.storage)return null;
+      const r=await withTimeout(window.storage.get(k,sh),8000,"get "+k);
+      return r?JSON.parse(r.value):null;
+    }catch(e){console.warn("db.get failed:",k,e.message);return null;}
+  },
+  async set(k,v,sh=false){
+    try{
+      if(!window.storage){console.warn("No window.storage");return false;}
+      const json=JSON.stringify(v);
+      if(json.length>4.5*1024*1024){console.error("Payload too large:",k,json.length);return false;}
+      await withTimeout(window.storage.set(k,json,sh),10000,"set "+k);
+      return true;
+    }catch(e){console.warn("db.set failed:",k,e.message);return false;}
+  },
 };
 async function ai(messages,sys){
   const body={model:"claude-sonnet-4-20250514",max_tokens:1200,messages};
@@ -253,7 +270,7 @@ function LoginInline({onLogin,theme,lang="hu"}){
       {err&&<div style={{fontSize:10,color:"#dc2626",marginBottom:8,lineHeight:1.4}}>{err}</div>}
       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12,cursor:"pointer"}} onClick={()=>setRemember(r=>!r)}>
         <div style={{width:12,height:12,border:`1.5px solid ${remember?"#dc2626":bdr}`,background:remember?"#dc2626":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          {remember&&<span style={{color:"#fff",fontSize:7,lineHeight:1,fontWeight:900}}>{"\u2713"}</span>}
+          {remember&&<span style={{color:"#fff",fontSize:7,lineHeight:1,fontWeight:900}}>✓</span>}
         </div>
         <span style={{fontSize:10,color:mu2,letterSpacing:0.2}}>{lang==="en"?"Remember for 30 days":"Eml\u00e9kezz 30 napig"}</span>
       </div>
@@ -314,7 +331,7 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggle
     <div style={{width:200,background:C.s1,borderRight:`1px solid ${C.bd}`,display:"flex",flexDirection:"column",minHeight:"100vh",flexShrink:0}}>
       <div style={{padding:"24px 20px 18px"}}>
         <div style={{fontSize:16,fontWeight:900,color:C.tx,letterSpacing:-0.5}}>auto<span style={{color:C.acc}}>rra</span></div>
-        <div style={{fontSize:9,color:C.mu,letterSpacing:2,textTransform:"uppercase",marginTop:3}}>{"PL \u2192 HU"}</div>
+        <div style={{fontSize:9,color:C.mu,letterSpacing:2,textTransform:"uppercase",marginTop:3}}>PL → HU</div>
       </div>
       <div style={{flex:1,paddingTop:2}}>
         {NAV.filter(n=>!n.admin||user.role==="admin").map(n=>{
@@ -331,7 +348,7 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggle
         })}
       </div>
       <div style={{borderTop:"1px solid #141414",padding:"14px 20px"}}>
-        <button onClick={onPublic} style={{display:"block",width:"100%",background:"transparent",border:"1px solid #1c1c1c",borderRadius:4,padding:"6px 10px",color:"#2e2e2e",fontSize:10,cursor:"pointer",fontFamily:F,textAlign:"left",marginBottom:14}}>Katal\u00f3gus</button>
+        <button onClick={onPublic} style={{display:"block",width:"100%",background:"transparent",border:"1px solid #1c1c1c",borderRadius:4,padding:"6px 10px",color:"#2e2e2e",fontSize:10,cursor:"pointer",fontFamily:F,textAlign:"left",marginBottom:14}}>Katalógus</button>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
           <div style={{width:22,height:22,background:C.acc,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}}>{user.name[0]}</div>
           <div style={{overflow:"hidden"}}>
@@ -339,7 +356,7 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggle
             <div style={{fontSize:9,color:"#2e2e2e",textTransform:"uppercase",letterSpacing:1}}>{user.role}</div>
           </div>
         </div>
-        <button onClick={onToggleTheme} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"transparent",border:"none",color:C.mu,fontSize:11,cursor:"pointer",padding:"6px 0",fontFamily:F,marginBottom:4}}><span style={{width:12,height:12,display:"flex",alignItems:"center"}}>{_theme==="light"?ICON.moon({width:12,height:12}):ICON.sun({width:12,height:12})}</span>{_theme==="light"?"S\u00f6t\u00e9t m\u00f3d":"Vil\u00e1gos m\u00f3d"}</button><button onClick={onLogout} style={{background:"transparent",border:"none",color:"#282828",fontSize:10,cursor:"pointer",fontFamily:F,padding:0}}>{"Kijelentkez\u00e9s"}</button>
+        <button onClick={onToggleTheme} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"transparent",border:"none",color:C.mu,fontSize:11,cursor:"pointer",padding:"6px 0",fontFamily:F,marginBottom:4}}><span style={{width:12,height:12,display:"flex",alignItems:"center"}}>{_theme==="light"?ICON.moon({width:12,height:12}):ICON.sun({width:12,height:12})}</span>{_theme==="light"?"Sötét mód":"Világos mód"}</button><button onClick={onLogout} style={{background:"transparent",border:"none",color:"#282828",fontSize:10,cursor:"pointer",fontFamily:F,padding:0}}>Kijelentkezés</button>
       </div>
     </div>
   );
@@ -357,29 +374,29 @@ function Dashboard({orders,convos,onNav}){
 
   return(
     <div>
-      <PH sub={`${today} - \u00f6sszes\u00edtett \u00fczleti \u00e1ttekint\u0151`}>{"Ir\u00e1ny\u00edt\u00f3pult"}</PH>
+      <PH sub={`${today} - \u00f6sszes\u00edtett \u00fczleti \u00e1ttekint\u0151`}>Irányítópult</PH>
 
       {/* Alerts */}
       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
         {unread>0&&(
           <div onClick={()=>onNav("inbox")} style={{background:C.acc+"10",border:`1px solid ${C.acc}25`,borderRadius:8,padding:"11px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
             <span>c</span>
-            <span style={{fontSize:13,color:C.t2,flex:1}}><strong style={{color:C.acc}}>{unread} megv\u00e1laszolatlan \u00fczenet</strong>{" - kattints a be\u00e9rkez\u0151h\u00f6z"}</span>
-            <span style={{fontSize:11,color:C.mu}}>{"\u2192"}</span>
+            <span style={{fontSize:13,color:C.t2,flex:1}}><strong style={{color:C.acc}}>{unread} megválaszolatlan üzenet</strong> - kattints a beérkezőhöz</span>
+            <span style={{fontSize:11,color:C.mu}}>→</span>
           </div>
         )}
         {ready.length>0&&(
           <div onClick={()=>onNav("orders")} style={{background:C.green+"10",border:`1px solid ${C.green}25`,borderRadius:8,padding:"11px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
-            <span>{"\u2705"}</span>
-            <span style={{fontSize:13,color:C.t2,flex:1}}><strong style={{color:C.green}}>{ready.length} rendel\u00e9s \u00e1tvehet\u0151</strong>{" - \u00e9rtes\u00edtsd az \u00fcgyfeleket"}</span>
-            <span style={{fontSize:11,color:C.mu}}>{"\u2192"}</span>
+            <span>✅</span>
+            <span style={{fontSize:13,color:C.t2,flex:1}}><strong style={{color:C.green}}>{ready.length} rendelés átvehető</strong> - értesítsd az ügyfeleket</span>
+            <span style={{fontSize:11,color:C.mu}}>→</span>
           </div>
         )}
         {needAction.length>0&&(
           <div onClick={()=>onNav("orders")} style={{background:C.amber+"10",border:`1px solid ${C.amber}25`,borderRadius:8,padding:"11px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
-            <span>{"\u23f3"}</span>
-            <span style={{fontSize:13,color:C.t2,flex:1}}><strong style={{color:C.amber}}>{needAction.length} rendel\u00e9s</strong>{" visszaigazol\u00e1sra vagy d\u00f6nt\u00e9sre v\u00e1r"}</span>
-            <span style={{fontSize:11,color:C.mu}}>{"\u2192"}</span>
+            <span>⏳</span>
+            <span style={{fontSize:13,color:C.t2,flex:1}}><strong style={{color:C.amber}}>{needAction.length} rendelés</strong> visszaigazolásra vagy döntésre vár</span>
+            <span style={{fontSize:11,color:C.mu}}>→</span>
           </div>
         )}
       </div>
@@ -401,7 +418,7 @@ function Dashboard({orders,convos,onNav}){
 
       {/* Status pipeline */}
       <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:18,marginBottom:16}}>
-        <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:14}}>{"RENDEL\u00c9SEK ST\u00c1TUSZA"}</div>
+        <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:14}}>RENDELÉSEK STÁTUSZA</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8}}>
           {SQ.map(s=>{const n=orders.filter(o=>o.status===s).length;return(
             <div key={s} onClick={()=>onNav("orders",s)} style={{cursor:"pointer",textAlign:"center",padding:"12px 6px",borderRadius:8,background:n>0?ST[s].bg:"transparent",border:`1px solid ${n>0?ST[s].color+"30":C.bd}`,transition:"all 0.1s"}}>
@@ -415,14 +432,14 @@ function Dashboard({orders,convos,onNav}){
       {/* Two columns: recent orders + platform breakdown */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:14}}>
         <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden"}}>
-          <div style={{padding:"11px 16px",borderBottom:`1px solid ${C.bd}`,fontSize:10,fontWeight:700,color:C.mu,letterSpacing:1}}>{"LEG\u00daJABB RENDEL\u00c9SEK"}</div>
-          {orders.length===0&&<div style={{padding:24,textAlign:"center",color:C.mu,fontSize:13}}>{"Nincs rendel\u00e9s."}</div>}
+          <div style={{padding:"11px 16px",borderBottom:`1px solid ${C.bd}`,fontSize:10,fontWeight:700,color:C.mu,letterSpacing:1}}>LEGÚJABB RENDELÉSEK</div>
+          {orders.length===0&&<div style={{padding:24,textAlign:"center",color:C.mu,fontSize:13}}>Nincs rendelés.</div>}
           {orders.slice(0,6).map((o,i)=>(
             <div key={o.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderBottom:i<Math.min(orders.length,6)-1?`1px solid ${C.bd}`:"none"}}>
               <span style={{fontSize:9,fontFamily:"monospace",color:C.mu,minWidth:50}}>{makeId(o.customer,o.zip)}</span>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.customer}</div>
-                <div style={{fontSize:11,color:C.mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{partsLabel(o)} \u00b7 {o.car}</div>
+                <div style={{fontSize:11,color:C.mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{partsLabel(o)} · {o.car}</div>
               </div>
               <SBadge status={o.status}/>
             </div>
@@ -451,11 +468,11 @@ function Dashboard({orders,convos,onNav}){
           </div>
 
           <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:16}}>
-            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>{"GYORS M\u0170VELETEK"}</div>
+            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>GYORS MŰVELETEK</div>
             <div style={{display:"flex",flexDirection:"column",gap:7}}>
-              <Btn v="subtle" full onClick={()=>onNav("inquiry")} style={{textAlign:"left",justifyContent:"flex-start"}}>{"\u2726 \u00daj \u00e9rdekl\u0151d\u00e9s feldolgoz\u00e1sa"}</Btn>
-              <Btn v="subtle" full onClick={()=>onNav("inbox")} style={{textAlign:"left",justifyContent:"flex-start"}}>{"\u25c9 Be\u00e9rkez\u0151 \u00fczenetek"}</Btn>
-              <Btn v="subtle" full onClick={()=>onNav("krakow")} style={{textAlign:"left",justifyContent:"flex-start"}}>{"\u25c8 Krakk\u00f3i rakt\u00e1r"}</Btn>
+              <Btn v="subtle" full onClick={()=>onNav("inquiry")} style={{textAlign:"left",justifyContent:"flex-start"}}>✦ Új érdeklődés feldolgozása</Btn>
+              <Btn v="subtle" full onClick={()=>onNav("inbox")} style={{textAlign:"left",justifyContent:"flex-start"}}>◉ Beérkező üzenetek</Btn>
+              <Btn v="subtle" full onClick={()=>onNav("krakow")} style={{textAlign:"left",justifyContent:"flex-start"}}>◈ Krakkói raktár</Btn>
             </div>
           </div>
         </div>
@@ -485,33 +502,33 @@ function AiDashboard({orders}){
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
-        <PH sub="AI elemzes">{"AI Elemz\u00e9s"}</PH>
+        <PH sub="AI elemzes">AI Elemzés</PH>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setInsight(null);}} style={{...inp,width:"auto",fontSize:11,padding:"5px 10px"}}><option value="all">{"\u00d6sszes st\u00e1tusz"}</option>{SQ.map(s=><option key={s} value={s}>{ST[s].label}</option>)}</select>
+          <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setInsight(null);}} style={{...inp,width:"auto",fontSize:11,padding:"5px 10px"}}><option value="all">Összes státusz</option>{SQ.map(s=><option key={s} value={s}>{ST[s].label}</option>)}</select>
           <Btn onClick={analyze} disabled={loading}>{loading?"\u27f3 Elemz\u00e9s...":"\u2726 Elemz\u00e9s futtat\u00e1sa"}</Btn>
         </div>
       </div>
-      <div style={{fontSize:11,color:C.mu,marginBottom:16}}>{filtered.length} rendel\u00e9s az elemz\u00e9sben{statusFilter!=="all"&&<span style={{color:(ST[statusFilter]&&ST[statusFilter].color),marginLeft:6,fontWeight:700}}> \u00b7 {(ST[statusFilter]&&ST[statusFilter].label)}</span>}</div>
+      <div style={{fontSize:11,color:C.mu,marginBottom:16}}>{filtered.length} rendelés az elemzésben{statusFilter!=="all"&&<span style={{color:(ST[statusFilter]&&ST[statusFilter].color),marginLeft:6,fontWeight:700}}> · {(ST[statusFilter]&&ST[statusFilter].label)}</span>}</div>
       {err&&<div style={{color:C.acc,fontSize:13,marginBottom:14}}>{err}</div>}
       {!insight&&!loading&&(
         <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center"}}>
-          <div style={{fontSize:32,marginBottom:12}}>{"\u2726"}</div>
-          <div style={{fontSize:14,fontWeight:600,color:C.t2,marginBottom:6}}>{"AI \u00fczleti elemz\u00e9s"}</div>
-          <div style={{fontSize:12,color:C.mu,marginBottom:20,maxWidth:400,margin:"0 auto 20px"}}>{"Kattints az elemz\u00e9s gombra - a mesters\u00e9ges intelligencia feldolgozza az \u00f6sszes rendel\u00e9si adatot \u00e9s konkr\u00e9t javaslatokat ad."}</div>
-          <Btn onClick={analyze}>{"\u2726 Elemz\u00e9s ind\u00edt\u00e1sa"}</Btn>
+          <div style={{fontSize:32,marginBottom:12}}>✦</div>
+          <div style={{fontSize:14,fontWeight:600,color:C.t2,marginBottom:6}}>AI üzleti elemzés</div>
+          <div style={{fontSize:12,color:C.mu,marginBottom:20,maxWidth:400,margin:"0 auto 20px"}}>Kattints az elemzés gombra - a mesterséges intelligencia feldolgozza az összes rendelési adatot és konkrét javaslatokat ad.</div>
+          <Btn onClick={analyze}>✦ Elemzés indítása</Btn>
         </div>
       )}
       {loading&&(
         <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center"}}>
-          <div style={{fontSize:24,marginBottom:12,color:C.acc}}>{"\u27f3"}</div>
-          <div style={{fontSize:13,color:C.mu}}>{"AI elemzi a rendel\u00e9si adatokat..."}</div>
+          <div style={{fontSize:24,marginBottom:12,color:C.acc}}>⟳</div>
+          <div style={{fontSize:13,color:C.mu}}>AI elemzi a rendelési adatokat...</div>
         </div>
       )}
       {insight&&(
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           {/* Summary */}
           <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,borderLeft:`3px solid ${C.acc}`}}>
-            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:8}}>{"\u00d6SSZEFOGLAL\u00c1S"}</div>
+            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:8}}>ÖSSZEFOGLALÁS</div>
             <div style={{fontSize:14,color:C.tx,lineHeight:1.65}}>{insight.osszesfoglalas}</div>
           </div>
           {/* Stats row */}
@@ -531,13 +548,13 @@ function AiDashboard({orders}){
           )}
           {/* Bottleneck */}
           <div style={{background:C.amber+"08",border:`1px solid ${C.amber}25`,borderRadius:10,padding:18}}>
-            <div style={{fontSize:10,color:C.amber,fontWeight:700,letterSpacing:1,marginBottom:8}}>{"\u26a0 SZ\u0170K KERESZTMETSZET"}</div>
+            <div style={{fontSize:10,color:C.amber,fontWeight:700,letterSpacing:1,marginBottom:8}}>⚠ SZŰK KERESZTMETSZET</div>
             <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{insight.bottleneck}</div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             {/* Suggestions */}
             <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:18}}>
-              <div style={{fontSize:10,color:C.green,fontWeight:700,letterSpacing:1,marginBottom:10}}>{"\u2713 JAVASLATOK"}</div>
+              <div style={{fontSize:10,color:C.green,fontWeight:700,letterSpacing:1,marginBottom:10}}>✓ JAVASLATOK</div>
               {(insight.javaslatok||[]).map((j,i)=>(
                 <div key={i} style={{display:"flex",gap:8,marginBottom:8}}>
                   <span style={{color:C.green,fontWeight:800,fontSize:11,flexShrink:0}}>{i+1}.</span>
@@ -547,7 +564,7 @@ function AiDashboard({orders}){
             </div>
             {/* Risks */}
             <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:18}}>
-              <div style={{fontSize:10,color:C.acc,fontWeight:700,letterSpacing:1,marginBottom:10}}>{"\u26a0 KOCK\u00c1ZATOK"}</div>
+              <div style={{fontSize:10,color:C.acc,fontWeight:700,letterSpacing:1,marginBottom:10}}>⚠ KOCKÁZATOK</div>
               {(insight.kockazatok||[]).map((k,i)=>(
                 <div key={i} style={{display:"flex",gap:8,marginBottom:8}}>
                   <span style={{color:C.acc,fontWeight:800,fontSize:11,flexShrink:0}}>!</span>
@@ -559,7 +576,7 @@ function AiDashboard({orders}){
           {/* Top parts */}
           {(insight.topAlkatreszek&&insight.topAlkatreszek.length>0)&&(
             <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:18}}>
-              <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>{"LEGGYAKORIBB ALKATR\u00c9SZEK"}</div>
+              <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>LEGGYAKORIBB ALKATRÉSZEK</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {insight.topAlkatreszek.map((a,i)=>(
                   <span key={i} style={{background:C.s3,border:`1px solid ${C.bd}`,borderRadius:5,padding:"4px 10px",fontSize:12,color:C.t2}}>{a}</span>
@@ -677,10 +694,10 @@ function Inbox({onCreateOrder,userName,users=[]}){
         <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.bd}`,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:14,fontWeight:800,color:C.tx}}>{"Be\u00e9rkez\u0151"}</span>
+              <span style={{fontSize:14,fontWeight:800,color:C.tx}}>Beérkező</span>
               {totalUnread>0&&<span style={{background:C.acc,color:"#fff",borderRadius:10,padding:"1px 7px",fontSize:10,fontWeight:700}}>{totalUnread}</span>}
             </div>
-            <Btn v="subtle" sz="sm" onClick={()=>setNewConvo(true)}>{"+ \u00daj"}</Btn>
+            <Btn v="subtle" sz="sm" onClick={()=>setNewConvo(true)}>+ Új</Btn>
           </div>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keres\u00e9s..." style={{...inp,padding:"7px 10px",fontSize:11,width:"100%",marginBottom:8}}/>
           <div style={{display:"flex",gap:4}}>
@@ -694,9 +711,9 @@ function Inbox({onCreateOrder,userName,users=[]}){
         <div style={{flex:1,overflowY:"auto"}}>
           {filtered.length===0&&(
             <div style={{padding:"40px 20px",textAlign:"center"}}>
-              <div style={{fontSize:28,marginBottom:8}}>{"\u25c9"}</div>
-              <div style={{fontSize:12,color:C.mu}}>{"Nincs \u00fczenet"}</div>
-              <div style={{fontSize:11,color:C.mu,marginTop:4}}>{"\u00dczenetek itt jelennek meg"}</div>
+              <div style={{fontSize:28,marginBottom:8}}>◉</div>
+              <div style={{fontSize:12,color:C.mu}}>Nincs üzenet</div>
+              <div style={{fontSize:11,color:C.mu,marginTop:4}}>Üzenetek itt jelennek meg</div>
             </div>
           )}
           {filtered.map(c=>{
@@ -730,9 +747,9 @@ function Inbox({onCreateOrder,userName,users=[]}){
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:C.bg}}>
         {!ac?(
           <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:C.mu,gap:12}}>
-            <div style={{fontSize:36,opacity:0.3}}>{"\u25c9"}</div>
-            <div style={{fontSize:13,fontWeight:600,color:C.t2}}>{"V\u00e1lassz egy besz\u00e9lget\u00e9st"}</div>
-            <div style={{fontSize:11,color:C.mu}}>{"Bal oldalt kattints egy \u00fczenetre"}</div>
+            <div style={{fontSize:36,opacity:0.3}}>◉</div>
+            <div style={{fontSize:13,fontWeight:600,color:C.t2}}>Válassz egy beszélgetést</div>
+            <div style={{fontSize:11,color:C.mu}}>Bal oldalt kattints egy üzenetre</div>
           </div>
         ):(
           <>
@@ -752,14 +769,14 @@ function Inbox({onCreateOrder,userName,users=[]}){
                 {[["open","Nyitott",C.green],["pending","F\u00fcgg\u0151",C.amber],["solved","Megoldott",C.mu]].map(([v,l,col])=>(
                   <button key={v} onClick={()=>setStatus(ac.id,v)} style={{padding:"4px 10px",fontSize:10,fontWeight:600,borderRadius:5,border:`1px solid ${ac.status===v?col:C.bd}`,background:ac.status===v?col+"15":"transparent",color:ac.status===v?col:C.mu,cursor:"pointer"}}>{l}</button>
                 ))}
-                <Btn v="success" sz="sm" onClick={createOrder} disabled={!(aiSugg&&aiSugg.inquiry)}>{"\u2713 Rendel\u00e9s"}</Btn>
+                <Btn v="success" sz="sm" onClick={createOrder} disabled={!(aiSugg&&aiSugg.inquiry)}>✓ Rendelés</Btn>
               </div>
             </div>
 
             {/* Messages */}
             <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
               {ac.messages.length===0&&(
-                <div style={{textAlign:"center",color:C.mu,fontSize:12,marginTop:40}}>{"M\u00e9g nincs \u00fczenet ebben a besz\u00e9lget\u00e9sben."}</div>
+                <div style={{textAlign:"center",color:C.mu,fontSize:12,marginTop:40}}>Még nincs üzenet ebben a beszélgetésben.</div>
               )}
               {ac.messages.map(m=>{
                 const out=m.from==="out";
@@ -779,16 +796,16 @@ function Inbox({onCreateOrder,userName,users=[]}){
             {(aiSugg||aiLoad)&&(
               <div style={{margin:"0 20px 8px",padding:"10px 14px",background:C.acc+"08",border:`1px solid ${C.acc}25`,borderRadius:8,flexShrink:0}}>
                 {aiLoad?(
-                  <div style={{fontSize:12,color:C.acc,display:"flex",alignItems:"center",gap:6}}>{"\u27f3 AI elemez..."}</div>
+                  <div style={{fontSize:12,color:C.acc,display:"flex",alignItems:"center",gap:6}}>⟳ AI elemez...</div>
                 ):(
                   <>
-                    <div style={{fontSize:10,color:C.acc,fontWeight:700,letterSpacing:0.8,marginBottom:6}}>{"\u2726 AI JAVASLAT"}</div>
-                    {aiSugg.inquiry&&<div style={{fontSize:11,color:C.mu,marginBottom:6}}><strong style={{color:C.t2}}>{aiSugg.inquiry.partName}</strong>{aiSugg.inquiry.car?<span style={{color:C.mu}}> \u00b7 {aiSugg.inquiry.car}</span>:""}{aiSugg.inquiry.serialNumber&&<span style={{marginLeft:6,fontFamily:"monospace",fontSize:10,background:aiSugg.inquiry.serialNumberConfidence==="low"?C.amber+"15":C.green+"15",color:aiSugg.inquiry.serialNumberConfidence==="low"?C.amber:C.green,borderRadius:3,padding:"1px 5px"}}>{aiSugg.inquiry.serialNumberConfidence==="low"?"\u26a0 ":""}{aiSugg.inquiry.serialNumber}</span>}</div>}
+                    <div style={{fontSize:10,color:C.acc,fontWeight:700,letterSpacing:0.8,marginBottom:6}}>✦ AI JAVASLAT</div>
+                    {aiSugg.inquiry&&<div style={{fontSize:11,color:C.mu,marginBottom:6}}><strong style={{color:C.t2}}>{aiSugg.inquiry.partName}</strong>{aiSugg.inquiry.car?<span style={{color:C.mu}}> · {aiSugg.inquiry.car}</span>:""}{aiSugg.inquiry.serialNumber&&<span style={{marginLeft:6,fontFamily:"monospace",fontSize:10,background:aiSugg.inquiry.serialNumberConfidence==="low"?C.amber+"15":C.green+"15",color:aiSugg.inquiry.serialNumberConfidence==="low"?C.amber:C.green,borderRadius:3,padding:"1px 5px"}}>{aiSugg.inquiry.serialNumberConfidence==="low"?"\u26a0 ":""}{aiSugg.inquiry.serialNumber}</span>}</div>}
                     <div style={{fontSize:12,color:C.t2,background:C.s2,borderRadius:6,padding:"8px 10px",marginBottom:6}}>{aiSugg.reply}</div>
                     <div style={{display:"flex",gap:6}}>
-                      <Btn v="subtle" sz="sm" onClick={()=>setReply(aiSugg.reply)}>{"\u21a9 Haszn\u00e1l"}</Btn>
-                      {aiSugg.inquiry&&<Btn v="success" sz="sm" onClick={createOrder}>{"\u2713 Rendel\u00e9s"}</Btn>}
-                      <Btn v="ghost" sz="sm" onClick={()=>setAiSugg(null)}>{"\u2715"}</Btn>
+                      <Btn v="subtle" sz="sm" onClick={()=>setReply(aiSugg.reply)}>↩ Használ</Btn>
+                      {aiSugg.inquiry&&<Btn v="success" sz="sm" onClick={createOrder}>✓ Rendelés</Btn>}
+                      <Btn v="ghost" sz="sm" onClick={()=>setAiSugg(null)}>✕</Btn>
                     </div>
                   </>
                 )}
@@ -798,15 +815,15 @@ function Inbox({onCreateOrder,userName,users=[]}){
             {/* Input bar */}
             <div style={{padding:"10px 16px",borderTop:`1px solid ${C.bd}`,background:C.s1,flexShrink:0}}>
               <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
-                <Btn v="subtle" sz="sm" onClick={getAI} disabled={aiLoad} style={{fontSize:11}}>{"\u2726 AI"}</Btn>
+                <Btn v="subtle" sz="sm" onClick={getAI} disabled={aiLoad} style={{fontSize:11}}>✦ AI</Btn>
                 <div style={{flex:1}}/>
                 <select onChange={e=>{if(e.target.value){const isHU=!(CHANNELS[ac.channel]&&CHANNELS[ac.channel].lang)||CHANNELS[ac.channel].lang==="HU";setReply(e.target.value);e.target.value=""}}} style={{...inp,width:"auto",fontSize:11,padding:"4px 8px"}} defaultValue="">
                   <option value="">Sablon...</option>
-                  <option value="K\u00f6sz\u00f6nj\u00fck \u00e9rdekl\u0151d\u00e9s\u00e9t! Miben seg\u00edthet\u00fcnk?">{"b \u00dcdv\u00f6zl\u00e9s"}</option>
-                  <option value="Az alkatr\u00e9sz k\u00e9szleten van, hamarosan visszajelz\u00fcnk az \u00e1rral.">{"\u2713 K\u00e9szleten"}</option>
-                  <option value="Sajnos ez az alkatr\u00e9sz jelenleg nem el\u00e9rhet\u0151. Megpr\u00f3b\u00e1lunk alternat\u00edv\u00e1t keresni.">{"\u2717 Nincs k\u00e9szleten"}</option>
-                  <option value="A rendel\u00e9s meg\u00e9rkezett rakt\u00e1runkba, hamarosan sz\u00e1ll\u00edtjuk.">{"6 Meg\u00e9rkezett"}</option>
-                  <option value="Az alkatr\u00e9sz \u00e1tvehet\u0151! Mikor tud j\u00f6nni?">{"9 \u00c1tvehet\u0151"}</option>
+                  <option value="K\u00f6sz\u00f6nj\u00fck \u00e9rdekl\u0151d\u00e9s\u00e9t! Miben seg\u00edthet\u00fcnk?">b Üdvözlés</option>
+                  <option value="Az alkatr\u00e9sz k\u00e9szleten van, hamarosan visszajelz\u00fcnk az \u00e1rral.">✓ Készleten</option>
+                  <option value="Sajnos ez az alkatr\u00e9sz jelenleg nem el\u00e9rhet\u0151. Megpr\u00f3b\u00e1lunk alternat\u00edv\u00e1t keresni.">✗ Nincs készleten</option>
+                  <option value="A rendel\u00e9s meg\u00e9rkezett rakt\u00e1runkba, hamarosan sz\u00e1ll\u00edtjuk.">6 Megérkezett</option>
+                  <option value="Az alkatr\u00e9sz \u00e1tvehet\u0151! Mikor tud j\u00f6nni?">9 Átvehető</option>
                 </select>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
@@ -826,7 +843,7 @@ function Inbox({onCreateOrder,userName,users=[]}){
       {/* -- NEW CONVERSATION MODAL -- */}
       {newConvo&&(
         <Modal onClose={()=>setNewConvo(false)} width={400}>
-          <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.bd}`,fontSize:14,fontWeight:700,color:C.tx}}>{"\u00daj besz\u00e9lget\u00e9s"}</div>
+          <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.bd}`,fontSize:14,fontWeight:700,color:C.tx}}>Új beszélgetés</div>
           <div style={{padding:20,display:"flex",flexDirection:"column",gap:12}}>
             <Field label="\u00dcgyf\u00e9l neve" value={nc.contact} onChange={v=>setNc(x=>({...x,contact:v}))} placeholder="pl. Kov\u00e1cs P\u00e9ter"/>
             <Field label="Csatorna">
@@ -836,8 +853,8 @@ function Inbox({onCreateOrder,userName,users=[]}){
             </Field>
             <Field label="Telefonsz\u00e1m / ID" value={nc.phone} onChange={v=>setNc(x=>({...x,phone:v}))} placeholder="pl. 36201234567"/>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <Btn v="outline" onClick={()=>setNewConvo(false)}>{"M\u00e9gse"}</Btn>
-              <Btn onClick={addNewConvo} disabled={!nc.contact}>{"L\u00e9trehoz\u00e1s"}</Btn>
+              <Btn v="outline" onClick={()=>setNewConvo(false)}>Mégse</Btn>
+              <Btn onClick={addNewConvo} disabled={!nc.contact}>Létrehozás</Btn>
             </div>
           </div>
         </Modal>
@@ -893,7 +910,7 @@ function Inquiry({onOrderCreated,userName}){
 
   return(
     <div>
-      <PH sub="AI feldolgoz\u00e1s">{"\u00daj \u00e9rdekl\u0151d\u00e9s"}</PH>
+      <PH sub="AI feldolgoz\u00e1s">Új érdeklődés</PH>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
         <Field label="\u00dcgyf\u00e9l neve" value={cust} onChange={setCust} placeholder="pl. Kov\u00e1cs P\u00e9ter"/>
         <Field label="Platform">
@@ -912,12 +929,12 @@ function Inquiry({onOrderCreated,userName}){
         <Btn onClick={process} disabled={ld||!msg.trim()}>
           {ld?"\u27f3  Elemz\u00e9s...":"\u2726  AI Feldolgoz\u00e1s"}
         </Btn>
-        {res&&<Btn v="success" onClick={create}>{"\u2713 Rendel\u00e9s l\u00e9trehoz\u00e1sa"}</Btn>}
+        {res&&<Btn v="success" onClick={create}>✓ Rendelés létrehozása</Btn>}
       </div>
       {err&&<div style={{color:C.acc,fontSize:13,marginBottom:12}}>{err}</div>}
       {res&&(
         <div style={{background:C.s1,border:"1px solid "+C.bd,borderRadius:9,padding:18}}>
-          <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:12}}>AZONOS\u00cdTOTT ALKATR\u00c9SZ</div>
+          <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:12}}>AZONOSÍTOTT ALKATRÉSZ</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
             {[["Alkatr\u00e9sz",res.partName],["J\u00e1rm\u0171",res.car||"\u2014"],
               ["Cikkz\u00e1m",res.serialNumber||"\u2014"],["Mennyis\u00e9g",(res.quantity||1)+" db"]
@@ -974,29 +991,29 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
     }catch{}
     setNotifyLoad(false);
   };
-  return(<div><PH sub="\u00d6sszes rendel\u00e9s - st\u00e1tusz b\u00e1rmelyik ir\u00e1nyba m\u00f3dos\u00edthat\u00f3">{"Rendel\u00e9sek"}</PH><div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}><div style={{flex:1,position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.mu,fontSize:12,pointerEvents:"none"}}>d</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keres\u00e9s \u00fcgyf\u00e9l, alkatr\u00e9sz, aut\u00f3..." style={{...inp,paddingLeft:32}}/></div><select value={filter} onChange={e=>setFilter(e.target.value)} style={{...inp,width:"auto"}}><option value="all">\u00d6sszes ({orders.length})</option>{SQ.map(s=><option key={s} value={s}>{ST[s].label} ({orders.filter(o=>o.status===s).length})</option>)}</select></div>
+  return(<div><PH sub="\u00d6sszes rendel\u00e9s - st\u00e1tusz b\u00e1rmelyik ir\u00e1nyba m\u00f3dos\u00edthat\u00f3">Rendelések</PH><div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}><div style={{flex:1,position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.mu,fontSize:12,pointerEvents:"none"}}>d</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keres\u00e9s \u00fcgyf\u00e9l, alkatr\u00e9sz, aut\u00f3..." style={{...inp,paddingLeft:32}}/></div><select value={filter} onChange={e=>setFilter(e.target.value)} style={{...inp,width:"auto"}}><option value="all">Összes ({orders.length})</option>{SQ.map(s=><option key={s} value={s}>{ST[s].label} ({orders.filter(o=>o.status===s).length})</option>)}</select></div>
     <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"visible"}}><div style={{display:"grid",gridTemplateColumns:"90px 140px 1fr 55px 165px 85px 110px",padding:"9px 16px",borderBottom:`1px solid ${C.bd}`,background:C.s2,borderRadius:"10px 10px 0 0"}}>{["Platform","\u00dcgyf\u00e9l","Alkatr\u00e9sz / Aut\u00f3","Db","St\u00e1tusz","D\u00e1tum",""].map((h,i)=>(<div key={i} style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8}}>{h.toUpperCase()}</div>))}</div>
-    {shown.length===0&&<div style={{padding:32,textAlign:"center",color:C.mu,fontSize:13}}>{"Nincs tal\u00e1lat."}</div>}
+    {shown.length===0&&<div style={{padding:32,textAlign:"center",color:C.mu,fontSize:13}}>Nincs találat.</div>}
     {shown.map((o,i)=>{const next=SQ[SQ.indexOf(o.status)+1];const isOpen=detailId===o.id;return(<div key={o.id} style={{borderBottom:i<shown.length-1?`1px solid ${C.bd}`:"none"}}><div onClick={()=>setDetailId(isOpen?null:o.id)} style={{display:"grid",gridTemplateColumns:"90px 140px 1fr 55px 165px 85px 110px",padding:"12px 16px",alignItems:"center",cursor:"pointer",background:isOpen?C.acc+"06":"transparent"}}><div style={{display:"flex",flexDirection:"column",gap:3}}><PBadge p={o.platform}/><span style={{fontSize:9,color:C.mu,fontFamily:"monospace",fontWeight:700}}>{makeId(o.customer,o.zip)}</span></div><div style={{fontSize:13,fontWeight:600,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{o.customer}</div><div style={{paddingRight:8}}><div style={{fontSize:13,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{partsLabel(o)}</div><div style={{fontSize:11,color:C.mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.car}</div></div><div style={{fontSize:13,color:C.t2,fontWeight:getParts(o).length>1?700:400,color:getParts(o).length>1?C.amber:C.t2}}>{totalQty(o)} db</div>
-    <div style={{position:"relative"}}><SBadge status={o.status} onClick={e=>{e.stopPropagation();setStatusPicker(statusPicker===o.id?null:o.id);}}/>{statusPicker===o.id&&(<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:100,background:C.s1,border:`1px solid ${C.bd2}`,borderRadius:8,padding:6,minWidth:200,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,padding:"4px 8px 6px"}}>{"ST\u00c1TUSZ M\u00d3DOS\u00cdT\u00c1SA"}</div>{SQ.map(s=>(<button key={s} onClick={()=>{onChange(o.id,{status:s});setStatusPicker(null);if(STATUS_NOTIFY[s])triggerNotify(o,s);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"7px 10px",background:o.status===s?ST[s].bg:"transparent",border:"none",cursor:"pointer",borderRadius:5,fontFamily:F}}><span style={{width:7,height:7,borderRadius:"50%",background:ST[s].color,flexShrink:0}}/><span style={{fontSize:12,color:o.status===s?ST[s].color:C.t2,fontWeight:o.status===s?700:500}}>{ST[s].label}</span>{o.status===s&&<span style={{marginLeft:"auto",fontSize:10,color:ST[s].color}}>{"\u2713"}</span>}</button>))}</div>)}</div>
-    <div style={{fontSize:11,color:C.mu}}>{o.date}</div><div style={{display:"flex",gap:4}}>{next&&<Btn v="subtle" sz="sm" onClick={e=>{e.stopPropagation();onChange(o.id,{status:next});if(STATUS_NOTIFY[next])triggerNotify(o,next);}} style={{padding:"4px 8px",fontSize:11}}>{"\u2192"}</Btn>}<Btn v="ghost" sz="sm" onClick={e=>{e.stopPropagation();startEdit(o);}} style={{padding:"4px 8px",fontSize:12}}>{"\u270e"}</Btn><Btn v="ghost" sz="sm" onClick={e=>{e.stopPropagation();setDel(o.id);}} style={{padding:"4px 8px",fontSize:12,color:C.acc}}>{"\u2715"}</Btn></div></div>{o.note&&<div style={{padding:"0 16px 10px",fontSize:11,color:C.mu}}>c {o.note}</div>}{isOpen&&(<div style={{padding:"0 16px 16px",borderTop:`1px solid ${C.bd}`,marginTop:4,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>ID</div><div style={{fontSize:13,fontWeight:800,color:C.tx,fontFamily:"monospace"}}>{makeId(o.customer,o.zip)}</div></div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>PLATFORM</div><PBadge p={o.platform}/></div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>{"D\u00c1TUM"}</div><div style={{fontSize:13,color:C.tx}}>{o.date}</div></div><div style={{gridColumn:"1/-1",background:C.s2,borderRadius:8,padding:"12px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:8}}>ALKATR\u00c9SZEK ({getParts(o).length} t\u00e9tel \u00b7 {totalQty(o)} db)</div>{getParts(o).map((p,pi)=>(<div key={pi} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderTop:pi>0?`1px solid ${C.bd}`:"none"}}><span style={{fontSize:11,color:C.mu,minWidth:20}}>{pi+1}.</span><span style={{flex:1,fontSize:13,color:C.tx}}>{p.name}</span><span style={{fontSize:12,fontWeight:700,color:C.acc,minWidth:40,textAlign:"right"}}>{p.qty} db</span>{p.allegroLink&&<a href={p.allegroLink} target="_blank" rel="noreferrer" style={{fontSize:10,color:C.blue,textDecoration:"none"}}>d</a>}</div>))}</div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>{"J\u00c1RM\u0170"}</div><div style={{fontSize:13,color:C.tx}}>{o.car}</div></div></div>)}</div>)})}</div>
-    <div style={{marginTop:8,fontSize:11,color:C.mu}}>{"Kattintson a st\u00e1tuszra a m\u00f3dos\u00edt\u00e1shoz - b\u00e1rmely ir\u00e1nyba."}</div>
+    <div style={{position:"relative"}}><SBadge status={o.status} onClick={e=>{e.stopPropagation();setStatusPicker(statusPicker===o.id?null:o.id);}}/>{statusPicker===o.id&&(<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:100,background:C.s1,border:`1px solid ${C.bd2}`,borderRadius:8,padding:6,minWidth:200,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,padding:"4px 8px 6px"}}>STÁTUSZ MÓDOSÍTÁSA</div>{SQ.map(s=>(<button key={s} onClick={()=>{onChange(o.id,{status:s});setStatusPicker(null);if(STATUS_NOTIFY[s])triggerNotify(o,s);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"7px 10px",background:o.status===s?ST[s].bg:"transparent",border:"none",cursor:"pointer",borderRadius:5,fontFamily:F}}><span style={{width:7,height:7,borderRadius:"50%",background:ST[s].color,flexShrink:0}}/><span style={{fontSize:12,color:o.status===s?ST[s].color:C.t2,fontWeight:o.status===s?700:500}}>{ST[s].label}</span>{o.status===s&&<span style={{marginLeft:"auto",fontSize:10,color:ST[s].color}}>✓</span>}</button>))}</div>)}</div>
+    <div style={{fontSize:11,color:C.mu}}>{o.date}</div><div style={{display:"flex",gap:4}}>{next&&<Btn v="subtle" sz="sm" onClick={e=>{e.stopPropagation();onChange(o.id,{status:next});if(STATUS_NOTIFY[next])triggerNotify(o,next);}} style={{padding:"4px 8px",fontSize:11}}>→</Btn>}<Btn v="ghost" sz="sm" onClick={e=>{e.stopPropagation();startEdit(o);}} style={{padding:"4px 8px",fontSize:12}}>✎</Btn><Btn v="ghost" sz="sm" onClick={e=>{e.stopPropagation();setDel(o.id);}} style={{padding:"4px 8px",fontSize:12,color:C.acc}}>✕</Btn></div></div>{o.note&&<div style={{padding:"0 16px 10px",fontSize:11,color:C.mu}}>c {o.note}</div>}{isOpen&&(<div style={{padding:"0 16px 16px",borderTop:`1px solid ${C.bd}`,marginTop:4,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>ID</div><div style={{fontSize:13,fontWeight:800,color:C.tx,fontFamily:"monospace"}}>{makeId(o.customer,o.zip)}</div></div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>PLATFORM</div><PBadge p={o.platform}/></div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>DÁTUM</div><div style={{fontSize:13,color:C.tx}}>{o.date}</div></div><div style={{gridColumn:"1/-1",background:C.s2,borderRadius:8,padding:"12px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:8}}>ALKATRÉSZEK ({getParts(o).length} tétel · {totalQty(o)} db)</div>{getParts(o).map((p,pi)=>(<div key={pi} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderTop:pi>0?`1px solid ${C.bd}`:"none"}}><span style={{fontSize:11,color:C.mu,minWidth:20}}>{pi+1}.</span><span style={{flex:1,fontSize:13,color:C.tx}}>{p.name}</span><span style={{fontSize:12,fontWeight:700,color:C.acc,minWidth:40,textAlign:"right"}}>{p.qty} db</span>{p.allegroLink&&<a href={p.allegroLink} target="_blank" rel="noreferrer" style={{fontSize:10,color:C.blue,textDecoration:"none"}}>d</a>}</div>))}</div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>JÁRMŰ</div><div style={{fontSize:13,color:C.tx}}>{o.car}</div></div></div>)}</div>)})}</div>
+    <div style={{marginTop:8,fontSize:11,color:C.mu}}>Kattintson a státuszra a módosításhoz - bármely irányba.</div>
     {statusPicker&&<div onClick={()=>setStatusPicker(null)} style={{position:"fixed",inset:0,zIndex:99}}/>}
 
       {notify&&(
         <Modal onClose={()=>setNotify(null)} width={480}>
           <div style={{padding:"18px 22px",borderBottom:`1px solid ${C.bd}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
-              <div style={{fontSize:14,fontWeight:700,color:C.tx}}>{"\u00dcgyf\u00e9l \u00e9rtes\u00edt\u00e9se"}</div>
-              <div style={{fontSize:11,color:C.mu,marginTop:2}}>{notify.order.customer} \u00b7 {makeId(notify.order.customer,notify.order.zip)} \u00b7 {(ST[notify.newStatus]&&ST[notify.newStatus].label)}</div>
+              <div style={{fontSize:14,fontWeight:700,color:C.tx}}>Ügyfél értesítése</div>
+              <div style={{fontSize:11,color:C.mu,marginTop:2}}>{notify.order.customer} · {makeId(notify.order.customer,notify.order.zip)} · {(ST[notify.newStatus]&&ST[notify.newStatus].label)}</div>
             </div>
-            <Btn v="ghost" sz="sm" onClick={()=>setNotify(null)}>{"\u2715"}</Btn>
+            <Btn v="ghost" sz="sm" onClick={()=>setNotify(null)}>✕</Btn>
           </div>
           <div style={{padding:22}}>
-            {notifyLoad&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,fontSize:12,color:C.acc}}><span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>{"\u27f3"}</span>{" AI szem\u00e9lyre szabja az \u00fczenetet..."}</div>}
+            {notifyLoad&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,fontSize:12,color:C.acc}}><span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>⟳</span> AI személyre szabja az üzenetet...</div>}
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-              <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1}}>{"\u00dcZENET AZ \u00dcGYF\u00c9LNEK"}</div>
-              {!notifyLoad&&<span style={{fontSize:9,background:C.acc+"15",color:C.acc,borderRadius:3,padding:"1px 6px",fontWeight:700}}>{"\u2726 AI"}</span>}
+              <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1}}>ÜZENET AZ ÜGYFÉLNEK</div>
+              {!notifyLoad&&<span style={{fontSize:9,background:C.acc+"15",color:C.acc,borderRadius:3,padding:"1px 6px",fontWeight:700}}>✦ AI</span>}
             </div>
             <textarea
               value={notify.msg}
@@ -1005,10 +1022,10 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
               style={{...inp,resize:"vertical",lineHeight:1.6,marginBottom:14,opacity:notifyLoad?0.5:1}}
             />
             <div style={{display:"flex",gap:8,justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{fontSize:11,color:C.mu}}>{"Szerkeszthet\u0151 \u00b7 M\u00e1solja \u00e9s k\u00fcldje el a megfelel\u0151 csatorn\u00e1n."}</div>
+              <div style={{fontSize:11,color:C.mu}}>Szerkeszthető · Másolja és küldje el a megfelelő csatornán.</div>
               <div style={{display:"flex",gap:8}}>
                 <CopyBtn text={notify.msg}/>
-                <Btn v="outline" onClick={()=>setNotify(null)}>{"Bez\u00e1r"}</Btn>
+                <Btn v="outline" onClick={()=>setNotify(null)}>Bezár</Btn>
               </div>
             </div>
           </div>
@@ -1017,8 +1034,8 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
     {editing&&(
       <Modal onClose={()=>setEditing(null)} width={580}>
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.bd}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontSize:14,fontWeight:700,color:C.tx}}>{"Rendel\u00e9s szerkeszt\u00e9se"}</div>
-          <Btn v="ghost" sz="sm" onClick={()=>setEditing(null)}>{"\u2715"}</Btn>
+          <div style={{fontSize:14,fontWeight:700,color:C.tx}}>Rendelés szerkesztése</div>
+          <Btn v="ghost" sz="sm" onClick={()=>setEditing(null)}>✕</Btn>
         </div>
         <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -1038,7 +1055,7 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
           </div>
 
           <div>
-            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>{"ALKATR\u00c9SZEK"}</div>
+            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>ALKATRÉSZEK</div>
             {(ef.parts||[]).map((p,pi)=>(
               <div key={pi} style={{display:"grid",gridTemplateColumns:"1fr 55px 160px auto",gap:8,marginBottom:7,alignItems:"center"}}>
                 <input
@@ -1065,27 +1082,27 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
                   disabled={(ef.parts||[]).length<=1}
                   style={{background:"transparent",border:"none",color:(ef.parts||[]).length<=1?C.mu:C.acc,cursor:(ef.parts||[]).length<=1?"not-allowed":"pointer",fontSize:16,padding:"4px 8px",lineHeight:1,transition:"color 0.15s"}}
                   title={(ef.parts||[]).length<=1?"Legal\u00e1bb egy t\u00e9tel sz\u00fcks\u00e9ges":"T\u00f6rl\u00e9s"}
-                >{"\u2715"}</button>
+                >✕</button>
               </div>
             ))}
-            <Btn v="subtle" sz="sm" onClick={()=>setEf(x=>({...x,parts:[...(x.parts||[]),{name:"",qty:1,allegroLink:""}]}))}>+ Alkatr\u00e9sz hozz\u00e1ad\u00e1sa</Btn>
+            <Btn v="subtle" sz="sm" onClick={()=>setEf(x=>({...x,parts:[...(x.parts||[]),{name:"",qty:1,allegroLink:""}]}))}>+ Alkatrész hozzáadása</Btn>
           </div>
 
           <Field label="Megjegyz\u00e9s" {...e("note")} rows={2} placeholder="Bels\u0151 megjegyz\u00e9s..."/>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-            <Btn v="outline" onClick={()=>setEditing(null)}>{"M\u00e9gse"}</Btn>
-            <Btn onClick={saveEdit} disabled={!(ef.parts||[]).some(p=>(p.name&&p.name.trim()))}>{"Ment\u00e9s"}</Btn>
+            <Btn v="outline" onClick={()=>setEditing(null)}>Mégse</Btn>
+            <Btn onClick={saveEdit} disabled={!(ef.parts||[]).some(p=>(p.name&&p.name.trim()))}>Mentés</Btn>
           </div>
         </div>
       </Modal>
     )}
-    {del&&(<Modal onClose={()=>setDel(null)} width={360}><div style={{padding:28,textAlign:"center"}}><div style={{fontSize:28,marginBottom:12}}>{"\u26a0"}</div><div style={{fontSize:15,fontWeight:700,color:C.tx,marginBottom:8}}>{"T\u00f6rli a rendel\u00e9st?"}</div><div style={{fontSize:13,color:C.mu,marginBottom:22}}>{"Ez a m\u0171velet nem visszavonhat\u00f3."}</div><div style={{display:"flex",gap:8,justifyContent:"center"}}><Btn v="outline" onClick={()=>setDel(null)}>{"M\u00e9gse"}</Btn><Btn v="danger" onClick={()=>{onDelete(del);setDel(null);}}>{"T\u00f6rl\u00e9s"}</Btn></div></div></Modal>)}
+    {del&&(<Modal onClose={()=>setDel(null)} width={360}><div style={{padding:28,textAlign:"center"}}><div style={{fontSize:28,marginBottom:12}}>⚠</div><div style={{fontSize:15,fontWeight:700,color:C.tx,marginBottom:8}}>Törli a rendelést?</div><div style={{fontSize:13,color:C.mu,marginBottom:22}}>Ez a művelet nem visszavonható.</div><div style={{display:"flex",gap:8,justifyContent:"center"}}><Btn v="outline" onClick={()=>setDel(null)}>Mégse</Btn><Btn v="danger" onClick={()=>{onDelete(del);setDel(null);}}>Törlés</Btn></div></div></Modal>)}
   </div>);
 }
 
 function Krakow({orders,onChange}){
   const items=orders.filter(o=>o.status==="krakow");
-  return(<div><PH sub="\u00c1tv\u00e9telre v\u00e1r\u00f3 csomagok Krakk\u00f3ban">{"Krakk\u00f3i rakt\u00e1r"}</PH>{items.length===0?(<div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center"}}><div style={{fontSize:28,marginBottom:10}}>6</div><div style={{color:C.mu,fontSize:13}}>{"Nincs csomag a rakt\u00e1rban."}</div></div>):(<><div style={{background:C.purple+"10",border:`1px solid ${C.purple}22`,borderRadius:8,padding:"12px 16px",marginBottom:16}}><span style={{color:C.purple,fontWeight:700,fontSize:13}}>6 {items.length} csomag v\u00e1r a rakt\u00e1rban</span></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden",marginBottom:14}}>{items.map((o,i)=>(<div key={o.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<items.length-1?`1px solid ${C.bd}`:"none"}}><PBadge p={o.platform}/><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:C.tx}}>{o.customer}</div><div style={{fontSize:11,color:C.mu}}>{o.part} \u00b7 {o.qty} db</div></div><Btn v="outline" sz="sm" onClick={()=>onChange(o.id,{status:"transit"})}>{"7 \u00daton van"}</Btn></div>))}</div><Btn full onClick={()=>items.forEach(o=>onChange(o.id,{status:"transit"}))}>{"7 \u00d6sszes csomag - fuvar ind\u00edt\u00e1sa"}</Btn></>)}</div>);
+  return(<div><PH sub="\u00c1tv\u00e9telre v\u00e1r\u00f3 csomagok Krakk\u00f3ban">Krakkói raktár</PH>{items.length===0?(<div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center"}}><div style={{fontSize:28,marginBottom:10}}>6</div><div style={{color:C.mu,fontSize:13}}>Nincs csomag a raktárban.</div></div>):(<><div style={{background:C.purple+"10",border:`1px solid ${C.purple}22`,borderRadius:8,padding:"12px 16px",marginBottom:16}}><span style={{color:C.purple,fontWeight:700,fontSize:13}}>6 {items.length} csomag vár a raktárban</span></div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden",marginBottom:14}}>{items.map((o,i)=>(<div key={o.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<items.length-1?`1px solid ${C.bd}`:"none"}}><PBadge p={o.platform}/><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:C.tx}}>{o.customer}</div><div style={{fontSize:11,color:C.mu}}>{o.part} · {o.qty} db</div></div><Btn v="outline" sz="sm" onClick={()=>onChange(o.id,{status:"transit"})}>7 Úton van</Btn></div>))}</div><Btn full onClick={()=>items.forEach(o=>onChange(o.id,{status:"transit"}))}>7 Összes csomag - fuvar indítása</Btn></>)}</div>);
 }
 
 function PriceCalculator(){
@@ -1178,7 +1195,7 @@ function PriceCalculator(){
 
   return(
     <div>
-      <PH sub="PLN \u00e1tv\u00e1lt\u00e1sa a szomsz\u00e9dos orsz\u00e1gok p\u00e9nznemeibe, fel\u00e1rral">{"\u00c1rkalkul\u00e1tor"}</PH>
+      <PH sub="PLN \u00e1tv\u00e1lt\u00e1sa a szomsz\u00e9dos orsz\u00e1gok p\u00e9nznemeibe, fel\u00e1rral">Árkalkulátor</PH>
 
       <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:20,alignItems:"start"}}>
 
@@ -1187,7 +1204,7 @@ function PriceCalculator(){
 
           {/* PLN input */}
           <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:18}}>
-            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:8}}>{"\u00d6SSZEG ZLOTIBAN"}</div>
+            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:8}}>ÖSSZEG ZLOTIBAN</div>
             <div style={{position:"relative"}}>
               <input type="number" value={pln} onChange={e=>setPln(e.target.value)} placeholder="0.00" min="0" step="0.01"
                 style={{...inp,fontSize:26,fontWeight:700,paddingRight:52,height:54}}/>
@@ -1197,18 +1214,18 @@ function PriceCalculator(){
 
           {/* Markup */}
           <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:18}}>
-            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>{"FEL\u00c1R"}</div>
+            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>FELÁR</div>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <input type="range" min="0" max="100" step="1" value={markup} onChange={e=>saveMarkup(parseInt(e.target.value))}
                 style={{flex:1,accentColor:C.acc,cursor:"pointer"}}/>
               <div style={{fontSize:22,fontWeight:800,color:C.acc,minWidth:48,textAlign:"right"}}>{markup}%</div>
             </div>
-            <div style={{fontSize:11,color:C.mu,marginTop:8}}>PLN \u00d7 \u00e1rfolyam \u00d7 {mult.toFixed(2)} = v\u00e9gs\u0151 \u00e1r</div>
+            <div style={{fontSize:11,color:C.mu,marginTop:8}}>PLN × árfolyam × {mult.toFixed(2)} = végső ár</div>
           </div>
 
           {/* Fetch button + status */}
           <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:18}}>
-            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>{"\u00c9L\u0150 \u00c1RFOLYAM"}</div>
+            <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>ÉLŐ ÁRFOLYAM</div>
             <button onClick={fetchRates} disabled={status==="loading"} style={{width:"100%",height:44,background:status==="live"?C.green+"22":status==="fallback"?C.amber+"22":C.acc,color:status==="live"?C.green:status==="fallback"?C.amber:"#fff",border:status==="live"?`1px solid ${C.green}40`:status==="fallback"?`1px solid ${C.amber}40`:"none",borderRadius:7,fontSize:13,fontWeight:700,cursor:status==="loading"?"not-allowed":"pointer",fontFamily:F,marginBottom:10}}>
               {status==="loading"?"\u27f3  Let\u00f6lt\u00e9s folyamatban...":(status==="live"||status==="fallback")?"\u21ba  Friss\u00edt\u00e9s":"\u2b07  \u00c1rfolyam let\u00f6lt\u00e9se"}
             </button>
@@ -1221,7 +1238,7 @@ function PriceCalculator(){
           {/* Fixed rates summary */}
           {Object.values(fixed).some(f=>(f&&f.on))&&(
             <div style={{background:C.acc+"10",border:`1px solid ${C.acc}25`,borderRadius:10,padding:14}}>
-              <div style={{fontSize:10,color:C.acc,fontWeight:700,letterSpacing:1,marginBottom:8}}>{"R\u00d6GZ\u00cdTETT \u00c1RFOLYAMOK"}</div>
+              <div style={{fontSize:10,color:C.acc,fontWeight:700,letterSpacing:1,marginBottom:8}}>RÖGZÍTETT ÁRFOLYAMOK</div>
               {CURRENCIES.filter(cur=>(fixed[cur.code]&&fixed[cur.code].on)).map(cur=>(
                 <div key={cur.code} style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.t2,marginBottom:4}}>
                   <span style={{display:"inline-flex",alignItems:"center",gap:5}}>{cur.countries.slice(0,2).map((cc,i)=><Flag key={i} code={cc} sm/>)} {cur.code}</span>
@@ -1238,7 +1255,7 @@ function PriceCalculator(){
           {!hasRates&&(
             <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:32,textAlign:"center",marginBottom:4}}>
               <div style={{fontSize:24,marginBottom:8}}>1</div>
-              <div style={{color:C.mu,fontSize:13}}>{"T\u00f6ltse le az \u00e1rfolyamot, vagy adjon meg fix \u00e9rt\u00e9ket."}</div>
+              <div style={{color:C.mu,fontSize:13}}>Töltse le az árfolyamot, vagy adjon meg fix értéket.</div>
             </div>
           )}
           {CURRENCIES.map(cur=>{
@@ -1260,8 +1277,8 @@ function PriceCalculator(){
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,flexWrap:"wrap"}}>
                       {cur.countries.map((cc,i)=><Flag key={i} code={cc}/>)}
                       <span style={{background:(isFixed?C.acc:cur.accent)+"20",color:isFixed?C.acc:cur.accent,border:`1px solid ${(isFixed?C.acc:cur.accent)}30`,borderRadius:4,padding:"2px 7px",fontSize:11,fontWeight:800}}>{cur.code}</span>
-                      {cur.home&&<span style={{background:C.green+"15",color:C.green,borderRadius:4,padding:"2px 6px",fontSize:9,fontWeight:800,letterSpacing:0.5}}>{"SAJ\u00c1T"}</span>}
-                      {isFixed&&<span style={{background:C.acc+"15",color:C.acc,borderRadius:4,padding:"2px 6px",fontSize:9,fontWeight:800,letterSpacing:0.5}}>{"R\u00d6GZ\u00cdTETT"}</span>}
+                      {cur.home&&<span style={{background:C.green+"15",color:C.green,borderRadius:4,padding:"2px 6px",fontSize:9,fontWeight:800,letterSpacing:0.5}}>SAJÁT</span>}
+                      {isFixed&&<span style={{background:C.acc+"15",color:C.acc,borderRadius:4,padding:"2px 6px",fontSize:9,fontWeight:800,letterSpacing:0.5}}>RÖGZÍTETT</span>}
                     </div>
                     <div style={{fontSize:10,color:C.mu}}>{cur.name}</div>
                   </div>
@@ -1291,11 +1308,11 @@ function PriceCalculator(){
 
                 {/* Per-currency markup */}
                 <div style={{marginTop:6,display:"flex",alignItems:"center",gap:8}}>
-                  <div style={{fontSize:10,color:C.mu,fontWeight:700,whiteSpace:"nowrap"}}>{"Fel\u00e1r:"}</div>
+                  <div style={{fontSize:10,color:C.mu,fontWeight:700,whiteSpace:"nowrap"}}>Felár:</div>
                   <input type="number" value={perMarkup[cur.code]!==undefined?perMarkup[cur.code]:""} onChange={e=>savePerMarkup(cur.code,e.target.value)} placeholder={markup+"%"} min="0" max="200" step="1"
                     style={{...inp,fontSize:12,fontWeight:700,color:perMarkup[cur.code]!=null?C.acc:C.mu,width:60,height:30,padding:"4px 8px",textAlign:"center"}}/>
-                  <div style={{fontSize:10,color:C.mu}}>% {perMarkup[cur.code]!=null?<span style={{color:C.acc}}>{"egy\u00e9ni"}</span>:<span>{"\u2190 glob\u00e1lis"}</span>}</div>
-                  {perMarkup[cur.code]!=null&&<button onClick={()=>savePerMarkup(cur.code,"")} style={{background:"transparent",border:"none",color:C.mu,cursor:"pointer",fontSize:10,fontFamily:F}}>{"t\u00f6rl\u00e9s"}</button>}
+                  <div style={{fontSize:10,color:C.mu}}>% {perMarkup[cur.code]!=null?<span style={{color:C.acc}}>egyéni</span>:<span>← globális</span>}</div>
+                  {perMarkup[cur.code]!=null&&<button onClick={()=>savePerMarkup(cur.code,"")} style={{background:"transparent",border:"none",color:C.mu,cursor:"pointer",fontSize:10,fontFamily:F}}>törlés</button>}
                 </div>
 
                 {/* Fixed rate input */}
@@ -1306,7 +1323,7 @@ function PriceCalculator(){
                       style={{...inp,fontSize:14,fontWeight:700,color:C.acc,border:`1px solid ${C.acc}50`,background:C.acc+"08",flex:1,height:36}}/>
                     <div style={{fontSize:10,color:C.acc,fontWeight:700}}>{cur.code}</div>
                     {liveRate&&(
-                      <button onClick={()=>setFixVal(cur.code,liveRate>=1?liveRate.toFixed(4):liveRate.toFixed(6))} style={{background:C.s3,border:`1px solid ${C.bd}`,borderRadius:5,padding:"4px 8px",fontSize:10,color:C.mu,cursor:"pointer",fontFamily:F,whiteSpace:"nowrap"}}>\u00c9l\u0151 be\u00e1ll\u00edt\u00e1sa</button>
+                      <button onClick={()=>setFixVal(cur.code,liveRate>=1?liveRate.toFixed(4):liveRate.toFixed(6))} style={{background:C.s3,border:`1px solid ${C.bd}`,borderRadius:5,padding:"4px 8px",fontSize:10,color:C.mu,cursor:"pointer",fontFamily:F,whiteSpace:"nowrap"}}>Élő beállítása</button>
                     )}
                   </div>
                 )}
@@ -1367,7 +1384,7 @@ function Templates(){
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
         <div style={{fontSize:11,fontWeight:700,color:C.mu,letterSpacing:0.5}}>{title}</div>
-        <Btn v="subtle" sz="sm" onClick={()=>startNew(lang)} style={{fontSize:10,padding:"3px 10px"}}>{"+ \u00daj sablon"}</Btn>
+        <Btn v="subtle" sz="sm" onClick={()=>startNew(lang)} style={{fontSize:10,padding:"3px 10px"}}>+ Új sablon</Btn>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {(items||[]).map(t=>(
@@ -1376,19 +1393,19 @@ function Templates(){
               <div style={{fontSize:13,fontWeight:600,color:C.tx,flex:1}}>{t.title}</div>
               <div style={{display:"flex",gap:5,flexShrink:0}}>
                 <CopyBtn text={t.text}/>
-                <button onClick={()=>startEdit(lang,t)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:4,padding:"2px 7px",fontSize:10,color:C.mu,cursor:"pointer",fontFamily:F}}>{"\u270e"}</button>
-                <button onClick={()=>deleteTpl(lang,t.id)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:4,padding:"2px 7px",fontSize:10,color:C.acc,cursor:"pointer",fontFamily:F}}>{"\u2715"}</button>
+                <button onClick={()=>startEdit(lang,t)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:4,padding:"2px 7px",fontSize:10,color:C.mu,cursor:"pointer",fontFamily:F}}>✎</button>
+                <button onClick={()=>deleteTpl(lang,t.id)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:4,padding:"2px 7px",fontSize:10,color:C.acc,cursor:"pointer",fontFamily:F}}>✕</button>
               </div>
             </div>
             <div style={{fontSize:12,color:C.mu,lineHeight:1.65}}>{t.text}</div>
           </div>
         ))}
-        {(!items||items.length===0)&&<div style={{fontSize:12,color:C.mu,textAlign:"center",padding:16}}>{"Nincs sablon. Hozzon l\u00e9tre egyet."}</div>}
+        {(!items||items.length===0)&&<div style={{fontSize:12,color:C.mu,textAlign:"center",padding:16}}>Nincs sablon. Hozzon létre egyet.</div>}
       </div>
     </div>
   );
 
-  if(!ready) return <div style={{color:C.mu,padding:40,textAlign:"center"}}>{"Bet\u00f6lt\u00e9s..."}</div>;
+  if(!ready) return <div style={{color:C.mu,padding:40,textAlign:"center"}}>Betöltés...</div>;
   return(
     <div>
       <PH sub="Sablonok">Sablonok</PH>
@@ -1401,14 +1418,14 @@ function Templates(){
         <Modal onClose={cancelEdit} width={500}>
           <div style={{padding:"18px 22px",borderBottom:`1px solid ${C.bd}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontSize:14,fontWeight:700,color:C.tx}}>{editing.id==="new"?"\u00daj sablon":"Sablon szerkeszt\u00e9se"}</div>
-            <Btn v="ghost" sz="sm" onClick={cancelEdit}>{"\u2715"}</Btn>
+            <Btn v="ghost" sz="sm" onClick={cancelEdit}>✕</Btn>
           </div>
           <div style={{padding:22,display:"flex",flexDirection:"column",gap:12}}>
             <Field label="Sablon neve" value={editing.title} onChange={v=>setEditing(e=>({...e,title:v}))} placeholder="pl. El\u00e9rhet\u0151s\u00e9g k\u00e9rd\u00e9se"/>
             <Field label="\u00dczenet sz\u00f6vege" value={editing.text} onChange={v=>setEditing(e=>({...e,text:v}))} rows={5} placeholder="Sablon sz\u00f6vege..."/>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <Btn v="outline" onClick={cancelEdit}>{"M\u00e9gse"}</Btn>
-              <Btn onClick={saveEdit} disabled={!editing.title||!editing.text}>{"Ment\u00e9s"}</Btn>
+              <Btn v="outline" onClick={cancelEdit}>Mégse</Btn>
+              <Btn onClick={saveEdit} disabled={!editing.title||!editing.text}>Mentés</Btn>
             </div>
           </div>
         </Modal>
@@ -1528,12 +1545,20 @@ function CatalogueManager({user}){
     // Save images to separate keyspace (keeps catalogue_items small, under Turso 5MB cap)
     try{
       if(images.length>0){
-        const ok=await db.set("catalogue_img_"+id,images,true);
-        if(!ok)console.warn("Image save returned falsy - item will be listed without images");
+        const imgOk=await db.set("catalogue_img_"+id,images,true);
+        if(!imgOk){
+          console.warn("Image save failed - continuing without images");
+          // Continue anyway - metadata still useful
+        }
       }
       // Prepend new meta, strip images from existing items for the list
       const metaList=[meta,...items.map(({images:_imgs,...rest})=>rest)];
-      await db.set("catalogue_items",metaList,true);
+      const metaOk=await db.set("catalogue_items",metaList,true);
+      if(!metaOk){
+        setSaving(false);
+        alert("Metadata mentés sikertelen. Próbáld újra vagy töröld néhány régi tételt.");
+        return;
+      }
     }catch(e){
       console.error("Catalogue save failed:",e);
       setSaving(false);
@@ -1566,9 +1591,9 @@ function CatalogueManager({user}){
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-        <PH sub="Katalogus">{"Katal\u00f3gus"}</PH>
+        <PH sub="Katalogus">Katalógus</PH>
         <div style={{display:"flex",gap:8}}>
-          <Btn v="outline" sz="sm" onClick={()=>{setShowForm(false);window.__setPublic&&window.__setPublic(true);}}>{"Nyilv\u00e1nos n\u00e9zet"}</Btn>
+          <Btn v="outline" sz="sm" onClick={()=>{setShowForm(false);window.__setPublic&&window.__setPublic(true);}}>Nyilvános nézet</Btn>
           <Btn onClick={()=>setShowForm(f=>!f)}>{showForm?"\u2715 M\u00e9gse":"+ \u00daj alkatr\u00e9sz"}</Btn>
         </div>
       </div>
@@ -1576,7 +1601,7 @@ function CatalogueManager({user}){
       {/* Upload form */}
       {showForm&&(
         <div style={{background:C.s1,border:`1px solid ${C.acc}25`,borderRadius:10,padding:22,marginBottom:20}}>
-          <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:14}}>{"\u00daJ ALKATR\u00c9SZ"}</div>
+          <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:14}}>ÚJ ALKATRÉSZ</div>
 
           {/* Image upload */}
           <div onClick={()=>fileRef.current&&fileRef.current.click()} style={{border:`2px dashed ${images.length?C.acc:C.bd2}`,borderRadius:8,padding:16,textAlign:"center",cursor:"pointer",marginBottom:16}}>
@@ -1587,21 +1612,21 @@ function CatalogueManager({user}){
                   {images.map((src,i)=>(
                     <div key={i} style={{position:"relative"}}>
                       <img src={src} alt="" style={{height:72,width:72,objectFit:"cover",borderRadius:6,border:`1px solid ${C.bd}`}}/>
-                      <button onClick={ev=>{ev.stopPropagation();setImages(imgs=>imgs.filter((_,j)=>j!==i));}} style={{position:"absolute",top:-6,right:-6,background:C.acc,color:"#fff",border:"none",borderRadius:"50%",width:18,height:18,cursor:"pointer",fontSize:9,fontFamily:F}}>{"\u2715"}</button>
+                      <button onClick={ev=>{ev.stopPropagation();setImages(imgs=>imgs.filter((_,j)=>j!==i));}} style={{position:"absolute",top:-6,right:-6,background:C.acc,color:"#fff",border:"none",borderRadius:"50%",width:18,height:18,cursor:"pointer",fontSize:9,fontFamily:F}}>✕</button>
                     </div>
                   ))}
                   <div style={{height:72,width:72,border:`2px dashed ${C.bd2}`,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:C.mu,fontSize:22}}>+</div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:10,fontSize:11,fontWeight:600}}>
                   <span style={{color:analyzing?C.amber:C.green}}>{analyzing?"\u27f3 AI elemz\u00e9s folyamatban...":"\u2713 Felt\u00f6ltve - szerkeszd az adatokat"}</span>
-                  {!analyzing&&images.length>0&&<button onClick={ev=>{ev.stopPropagation();retryAnalyze();}} style={{padding:"4px 10px",background:"transparent",border:`1px solid ${C.acc}40`,color:C.acc,fontSize:10,fontWeight:600,cursor:"pointer",borderRadius:4,fontFamily:F}}>{"\u21bb \u00dajra elemz\u00e9s"}</button>}
-                  {analyzing&&<button onClick={ev=>{ev.stopPropagation();setAnalyzing(false);}} style={{padding:"4px 10px",background:"transparent",border:`1px solid ${C.mu}40`,color:C.mu,fontSize:10,fontWeight:600,cursor:"pointer",borderRadius:4,fontFamily:F}}>{"M\u00e9gse"}</button>}
+                  {!analyzing&&images.length>0&&<button onClick={ev=>{ev.stopPropagation();retryAnalyze();}} style={{padding:"4px 10px",background:"transparent",border:`1px solid ${C.acc}40`,color:C.acc,fontSize:10,fontWeight:600,cursor:"pointer",borderRadius:4,fontFamily:F}}>↻ Újra elemzés</button>}
+                  {analyzing&&<button onClick={ev=>{ev.stopPropagation();setAnalyzing(false);}} style={{padding:"4px 10px",background:"transparent",border:`1px solid ${C.mu}40`,color:C.mu,fontSize:10,fontWeight:600,cursor:"pointer",borderRadius:4,fontFamily:F}}>Mégse</button>}
                 </div>
               </div>
             ):(
               <div>
                 <div style={{fontSize:24,marginBottom:6,color:C.mu}}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-                <div style={{fontSize:13,color:C.mu}}>{"Kattints a k\u00e9pek felt\u00f6lt\u00e9s\u00e9hez - AI automatikusan felismeri az alkatr\u00e9szt"}</div>
+                <div style={{fontSize:13,color:C.mu}}>Kattints a képek feltöltéséhez - AI automatikusan felismeri az alkatrészt</div>
               </div>
             )}
           </div>
@@ -1611,25 +1636,25 @@ function CatalogueManager({user}){
             <Field label="Alkatr\u00e9sz neve" {...f("partName")} placeholder="pl. Els\u0151 f\u00e9kt\u00e1rcsa"/><Field label="Kateg\u00f3ria">
   <div style={{display:"flex",flexDirection:"column",gap:4}}>
     <select value={form._catParent||""} onChange={e=>{setForm(x=>({...x,_catParent:e.target.value,category:""}));}} style={{...inp,fontSize:12}}>
-      <option value="">{"-- F\u0151kateg\u00f3ria --"}</option>
+      <option value="">-- Főkategória --</option>
       {PART_CAT_TREE.map(c=><option key={c.id} value={c.id}>{c.hu}</option>)}
     </select>
     {form._catParent&&(
       <select value={form.category||""} onChange={e=>setField("category",e.target.value)} style={{...inp,fontSize:12}}>
-        <option value="">{"-- Alkateg\u00f3ria --"}</option>
+        <option value="">-- Alkategória --</option>
         {((PART_CAT_TREE.find(c=>c.id===form._catParent)||{sub:{hu:[]}}).sub.hu||[]).map(s=><option key={s} value={s}>{s}</option>)}
       </select>
     )}
-    {form.category&&<div style={{fontSize:10,color:C.green,marginTop:2}}>\u2713 {form.category}</div>}
+    {form.category&&<div style={{fontSize:10,color:C.green,marginTop:2}}>✓ {form.category}</div>}
   </div>
 </Field>
             <Field label="Sorozatsz\u00e1m / OEM" {...f("serialNumber")} placeholder="pl. 1K0615301AA"/>
-            {form.serialNumberWarning&&<div style={{gridColumn:"1/-1",background:C.amber+"10",border:`1px solid ${C.amber}25`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.amber}}>\u26a0 {form.serialNumberWarning}</div>}
-            {form.serialNumberVerified&&<div style={{gridColumn:"1/-1",background:C.green+"08",border:`1px solid ${C.green}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.t2}}>\u2713 Ellen\u0151rz\u00e9s: {form.serialNumberVerified}</div>}
+            {form.serialNumberWarning&&<div style={{gridColumn:"1/-1",background:C.amber+"10",border:`1px solid ${C.amber}25`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.amber}}>⚠ {form.serialNumberWarning}</div>}
+            {form.serialNumberVerified&&<div style={{gridColumn:"1/-1",background:C.green+"08",border:`1px solid ${C.green}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.t2}}>✓ Ellenőrzés: {form.serialNumberVerified}</div>}
             {form.serialNumber&&learned[form.serialNumber.toUpperCase()]&&(
               <div style={{gridColumn:"1/-1",background:C.green+"08",border:`1px solid ${C.green}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.green,display:"flex",alignItems:"center",gap:6}}>
-                <span>{"\u2713"}</span>
-                <span>Tanult: <strong>{learned[form.serialNumber.toUpperCase()].car}</strong> \u00b7 {learned[form.serialNumber.toUpperCase()].partName}</span>
+                <span>✓</span>
+                <span>Tanult: <strong>{learned[form.serialNumber.toUpperCase()].car}</strong> · {learned[form.serialNumber.toUpperCase()].partName}</span>
                 <button onClick={()=>setForm(x=>({...x,car:learned[form.serialNumber.toUpperCase()].car,partName:learned[form.serialNumber.toUpperCase()].partName}))} style={{marginLeft:"auto",background:C.green+"20",color:C.green,border:"none",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:F}}>Alkalmaz</button>
               </div>
             )}
@@ -1642,8 +1667,8 @@ function CatalogueManager({user}){
             <Field label="\u00c1r (Ft)" {...f("price")} placeholder="pl. 25000"/>
             {form.estimatedPriceHUF&&!form.price&&(
               <div style={{gridColumn:"1/-1",background:C.blue+"08",border:`1px solid ${C.blue}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.t2,display:"flex",alignItems:"center",gap:8}}>
-                <span>AI \u00e1rbecsl\u00e9s: ~{Number(form.estimatedPriceHUF).toLocaleString("hu")} Ft{form.priceNote?" - "+form.priceNote:""}</span>
-                <button onClick={()=>setField("price",""+form.estimatedPriceHUF)} style={{marginLeft:"auto",background:C.blue+"20",color:C.blue,border:"none",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:F}}>{"Haszn\u00e1l"}</button>
+                <span>AI árbecslés: ~{Number(form.estimatedPriceHUF).toLocaleString("hu")} Ft{form.priceNote?" - "+form.priceNote:""}</span>
+                <button onClick={()=>setField("price",""+form.estimatedPriceHUF)} style={{marginLeft:"auto",background:C.blue+"20",color:C.blue,border:"none",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:F}}>Használ</button>
               </div>
             )}
             <Field label="El\u00e9rhet\u0151s\u00e9g" {...f("contact")} placeholder="pl. +36 30 123 4567"/>
@@ -1651,7 +1676,7 @@ function CatalogueManager({user}){
           </div>
           <div style={{marginBottom:14}}><Field label="Le\u00edr\u00e1s" {...f("description")} rows={3}/></div>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-            <Btn v="outline" onClick={()=>{setShowForm(false);setImages([]);setForm(BF);}}>{"M\u00e9gse"}</Btn>
+            <Btn v="outline" onClick={()=>{setShowForm(false);setImages([]);setForm(BF);}}>Mégse</Btn>
             <Btn onClick={publish} disabled={saving||!form.partName||!form.price}>{saving?"Ment\u00e9s...":"K\u00f6zz\u00e9t\u00e9tel"}</Btn>
           </div>
         </div>
@@ -1661,7 +1686,7 @@ function CatalogueManager({user}){
       {items.length===0&&!showForm&&(
         <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center",color:C.mu}}>
           <div style={{fontSize:32,marginBottom:12,color:C.mu}}><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
-          <div style={{fontSize:13}}>{"Nincs alkatr\u00e9sz. Kattints az \u00daj alkatr\u00e9sz gombra!"}</div>
+          <div style={{fontSize:13}}>Nincs alkatrész. Kattints az Új alkatrész gombra!</div>
         </div>
       )}
 
@@ -1691,7 +1716,7 @@ function CatalogueManager({user}){
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0}}>
                 <Btn v="outline" sz="sm" onClick={e=>{e.stopPropagation();toggleSold(item.id);}}>{item.sold?"Akt\u00edv":"Eladva"}</Btn>
-                <Btn v="danger" sz="sm" onClick={e=>{e.stopPropagation();remove(item.id);}}>{"T\u00f6rl\u00e9s"}</Btn>
+                <Btn v="danger" sz="sm" onClick={e=>{e.stopPropagation();remove(item.id);}}>Törlés</Btn>
               </div>
             </div>
             {/* Detail expand */}
@@ -1917,13 +1942,13 @@ setItems(withImages);setLd(false);
 }
 
 // -- Stub panels for routes with no full implementation yet --
-function Customers({orders}){return(<div><div style={{fontSize:20,fontWeight:800,color:C.tx,marginBottom:12}}>{"Vev\u0151k"}</div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:40,textAlign:"center",color:C.mu}}>{orders.length===0?"M\u00e9g nincs vev\u0151. Rendel\u00e9sek l\u00e9trehoz\u00e1sa ut\u00e1n automatikusan megjelennek.":orders.length+" rendel\u00e9s alapj\u00e1n \u00e9p\u00fctve. R\u00e9szletes n\u00e9zet el\u0151k\u00e9sz\u00fclet alatt."}</div></div>);}
+function Customers({orders}){return(<div><div style={{fontSize:20,fontWeight:800,color:C.tx,marginBottom:12}}>Vevők</div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:40,textAlign:"center",color:C.mu}}>{orders.length===0?"M\u00e9g nincs vev\u0151. Rendel\u00e9sek l\u00e9trehoz\u00e1sa ut\u00e1n automatikusan megjelennek.":orders.length+" rendel\u00e9s alapj\u00e1n \u00e9p\u00fctve. R\u00e9szletes n\u00e9zet el\u0151k\u00e9sz\u00fclet alatt."}</div></div>);}
 
 function Settings({user}){
   const[aiPrompt,setAiPrompt]=useState("");
   useEffect(()=>{db.get("ai_system_prompt",true).then(d=>setAiPrompt(d||""));},[]);
   const save=async()=>{await db.set("ai_system_prompt",aiPrompt,true);alert("Mentve");};
-  return(<div><div style={{fontSize:20,fontWeight:800,color:C.tx,marginBottom:12}}>{"Be\u00e1ll\u00edt\u00e1sok"}</div>{user&&user.role==="admin"&&(<div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>AI RENDSZER PROMPT</div><textarea value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} rows={8} style={{width:"100%",padding:10,background:C.s2,border:`1px solid ${C.bd}`,borderRadius:6,color:C.tx,fontSize:12,fontFamily:"monospace",outline:"none",resize:"vertical",marginBottom:10}}/><button onClick={save} style={{padding:"8px 16px",background:"#dc2626",color:"#fff",border:"none",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer"}}>{"Ment\u00e9s"}</button></div>)}</div>);
+  return(<div><div style={{fontSize:20,fontWeight:800,color:C.tx,marginBottom:12}}>Beállítások</div>{user&&user.role==="admin"&&(<div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:10}}>AI RENDSZER PROMPT</div><textarea value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} rows={8} style={{width:"100%",padding:10,background:C.s2,border:`1px solid ${C.bd}`,borderRadius:6,color:C.tx,fontSize:12,fontFamily:"monospace",outline:"none",resize:"vertical",marginBottom:10}}/><button onClick={save} style={{padding:"8px 16px",background:"#dc2626",color:"#fff",border:"none",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer"}}>Mentés</button></div>)}</div>);
 }
 
 function SecurityPanel({user}){
@@ -1934,7 +1959,7 @@ function SecurityPanel({user}){
     refresh();const t=setInterval(refresh,5000);return()=>clearInterval(t);
   },[]);
   const unlock=()=>{localStorage.removeItem(LOCKOUT_KEY);setAttempts([]);};
-  return(<div><div style={{fontSize:20,fontWeight:800,color:C.tx,marginBottom:12}}>{"Biztons\u00e1g"}</div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1}}>{"SIKERTELEN BEL\u00c9P\u00c9SEK"}</div>{attempts.length>0&&<button onClick={unlock} style={{padding:"5px 12px",background:"transparent",border:`1px solid ${C.acc}`,color:C.acc,fontSize:11,fontWeight:600,cursor:"pointer",borderRadius:4}}>{"Feloldoz\u00e1s"}</button>}</div>{attempts.length===0?<div style={{fontSize:12,color:C.mu,textAlign:"center",padding:20}}>{"Nincs sikertelen pr\u00f3b\u00e1lkoz\u00e1s."}</div>:<div style={{display:"flex",flexDirection:"column",gap:6}}>{attempts.map((t,i)=><div key={i} style={{fontSize:12,color:C.t2,padding:"6px 10px",background:C.s2,borderRadius:4}}>{new Date(t).toLocaleString("hu")}</div>)}</div>}</div></div>);
+  return(<div><div style={{fontSize:20,fontWeight:800,color:C.tx,marginBottom:12}}>Biztonság</div><div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:20,marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1}}>SIKERTELEN BELÉPÉSEK</div>{attempts.length>0&&<button onClick={unlock} style={{padding:"5px 12px",background:"transparent",border:`1px solid ${C.acc}`,color:C.acc,fontSize:11,fontWeight:600,cursor:"pointer",borderRadius:4}}>Feloldozás</button>}</div>{attempts.length===0?<div style={{fontSize:12,color:C.mu,textAlign:"center",padding:20}}>Nincs sikertelen próbálkozás.</div>:<div style={{display:"flex",flexDirection:"column",gap:6}}>{attempts.map((t,i)=><div key={i} style={{fontSize:12,color:C.t2,padding:"6px 10px",background:C.s2,borderRadius:4}}>{new Date(t).toLocaleString("hu")}</div>)}</div>}</div></div>);
 }
 
 function SellerSubmissions(){
@@ -1942,7 +1967,7 @@ function SellerSubmissions(){
   useEffect(()=>{db.get("seller_submissions",true).then(d=>setSubs(Array.isArray(d)?d:[]));},[]);
   const approve=async(s)=>{const u=subs.map(x=>x.id===s.id?{...x,status:"approved"}:x);await db.set("seller_submissions",u,true);setSubs(u);};
   const reject=async(id)=>{const u=subs.filter(x=>x.id!==id);await db.set("seller_submissions",u,true);setSubs(u);};
-  return(<div><div style={{fontSize:20,fontWeight:800,color:C.tx,marginBottom:12}}>{"Elad\u00f3i bek\u00fcld\u00e9sek"}</div>{subs.length===0?<div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:40,textAlign:"center",color:C.mu}}>{"Nincs bek\u00fcld\u00e9s."}</div>:subs.map(s=><div key={s.id} style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:14,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}><div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,color:C.tx}}>{s.partName}</div><div style={{fontSize:11,color:C.mu,marginTop:3}}>{s.car||"\u2014"} \u00b7 {s.businessName} \u00b7 {s.contact}</div>{s.description&&<div style={{fontSize:11,color:C.mu,marginTop:4}}>{s.description}</div>}</div><div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>{s.price&&<div style={{fontSize:13,fontWeight:800,color:C.acc}}>{parseInt(s.price).toLocaleString("hu")} Ft</div>}{s.status!=="approved"?<div style={{display:"flex",gap:6}}><button onClick={()=>approve(s)} style={{padding:"5px 10px",background:"#16a34a",color:"#fff",border:"none",borderRadius:4,fontSize:11,cursor:"pointer"}}>{"J\u00f3v\u00e1hagy"}</button><button onClick={()=>reject(s.id)} style={{padding:"5px 10px",background:"transparent",color:C.acc,border:`1px solid ${C.acc}`,borderRadius:4,fontSize:11,cursor:"pointer"}}>{"Elutas\u00edt"}</button></div>:<div style={{fontSize:10,color:C.green,fontWeight:700}}>{"J\u00d3V\u00c1HAGYVA"}</div>}</div></div></div>)}</div>);
+  return(<div><div style={{fontSize:20,fontWeight:800,color:C.tx,marginBottom:12}}>Eladói beküldések</div>{subs.length===0?<div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:40,textAlign:"center",color:C.mu}}>Nincs beküldés.</div>:subs.map(s=><div key={s.id} style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:14,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}><div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,color:C.tx}}>{s.partName}</div><div style={{fontSize:11,color:C.mu,marginTop:3}}>{s.car||"\u2014"} · {s.businessName} · {s.contact}</div>{s.description&&<div style={{fontSize:11,color:C.mu,marginTop:4}}>{s.description}</div>}</div><div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>{s.price&&<div style={{fontSize:13,fontWeight:800,color:C.acc}}>{parseInt(s.price).toLocaleString("hu")} Ft</div>}{s.status!=="approved"?<div style={{display:"flex",gap:6}}><button onClick={()=>approve(s)} style={{padding:"5px 10px",background:"#16a34a",color:"#fff",border:"none",borderRadius:4,fontSize:11,cursor:"pointer"}}>Jóváhagy</button><button onClick={()=>reject(s.id)} style={{padding:"5px 10px",background:"transparent",color:C.acc,border:`1px solid ${C.acc}`,borderRadius:4,fontSize:11,cursor:"pointer"}}>Elutasít</button></div>:<div style={{fontSize:10,color:C.green,fontWeight:700}}>JÓVÁHAGYVA</div>}</div></div></div>)}</div>);
 }
 
 // -- MainApp: authenticated admin interface --
@@ -2049,7 +2074,7 @@ function LandingPage({onCatalogue,onAdmin,onLogin,loginOpen,setLoginOpen}){
         <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:0,background:`radial-gradient(ellipse at ${20+mouse.x*60}% ${30+mouse.y*50}%, ${isDark?"rgba(220,38,38,0.07)":"rgba(220,38,38,0.04)"} 0%, transparent 60%)`,transition:"background 0.8s ease"}}/>
         <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:0,background:isDark?"radial-gradient(ellipse at 50% 40%, transparent 40%, rgba(0,0,0,0.35) 100%)":"none"}}/>
         <div style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
-          <div style={{fontSize:11,fontWeight:700,letterSpacing:3,color:"#dc2626",textTransform:"uppercase",marginBottom:20}}>{"Min\u0151s\u00e9gi aut\u00f3alkatr\u00e9szek"}</div>
+          <div style={{fontSize:11,fontWeight:700,letterSpacing:3,color:"#dc2626",textTransform:"uppercase",marginBottom:20}}>Minőségi autóalkatrészek</div>
           <h1 style={{fontSize:"clamp(42px,7vw,80px)",fontWeight:900,lineHeight:1.1,letterSpacing:-2,marginBottom:20,paddingBottom:4,minHeight:"clamp(100px,16vw,195px)"}}>
             <style>{"@keyframes heroFade{0%{opacity:0;transform:translateY(10px)}15%{opacity:1;transform:translateY(0)}85%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-10px)}}"}</style>
             <span key={heroIdx+"-top"} style={{display:"block",animation:"heroFade 4.5s ease-in-out both"}}>{landingLang==="en"?currHero.topEn:currHero.top}</span>
