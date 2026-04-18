@@ -306,24 +306,28 @@ const ICON={
 };
 
 const NAV=[
-  {id:"dashboard",label:"Ir\u00e1ny\u00edt\u00f3pult",icon:"dashboard"},
-  {id:"ai",       label:"AI Elemz\u00e9s",         icon:"ai"},
-  {id:"inbox",    label:"Be\u00e9rkez\u0151",      icon:"inbox"},
-  {id:"inquiry",  label:"\u00daj \u00e9rdekl\u0151d\u00e9s",icon:"inquiry"},
-  {id:"orders",   label:"Rendel\u00e9sek",         icon:"orders"},
-  {id:"krakow",   label:"Krakk\u00f3i rakt\u00e1r",icon:"krakow"},
-  {id:"catalogue",label:"Katal\u00f3gus",          icon:"catalogue"},
-  {id:"calculator",label:"\u00c1rkalkul\u00e1tor",icon:"calculator"},
-  {id:"templates",label:"Sablonok",                 icon:"templates"},
-  {id:"customers",label:"Vev\u0151k",              icon:"customers"},
-  {id:"settings", label:"Be\u00e1ll\u00edt\u00e1sok",icon:"settings"},
-  {id:"security", label:"Biztons\u00e1g",          icon:"security"},
-  {id:"sellers",  label:"Elad\u00f3i bek.",        icon:"sellers"},
+  {id:"dashboard",hu:"Ir\u00e1ny\u00edt\u00f3pult",en:"Dashboard",icon:"dashboard"},
+  {id:"ai",       hu:"AI Elemz\u00e9s",            en:"AI Analysis",icon:"ai"},
+  {id:"inbox",    hu:"Be\u00e9rkez\u0151",         en:"Inbox",icon:"inbox"},
+  {id:"inquiry",  hu:"\u00daj \u00e9rdekl\u0151d\u00e9s",en:"New inquiry",icon:"inquiry"},
+  {id:"orders",   hu:"Rendel\u00e9sek",            en:"Orders",icon:"orders"},
+  {id:"krakow",   hu:"Krakk\u00f3i rakt\u00e1r",   en:"Krakow stock",icon:"krakow"},
+  {id:"catalogue",hu:"Katal\u00f3gus",             en:"Catalogue",icon:"catalogue"},
+  {id:"calculator",hu:"\u00c1rkalkul\u00e1tor",   en:"Calculator",icon:"calculator"},
+  {id:"templates",hu:"Sablonok",                    en:"Templates",icon:"templates"},
+  {id:"customers",hu:"Vev\u0151k",                 en:"Customers",icon:"customers"},
+  {id:"settings", hu:"Be\u00e1ll\u00edt\u00e1sok",en:"Settings",icon:"settings"},
+  {id:"security", hu:"Biztons\u00e1g",             en:"Security",icon:"security"},
+  {id:"sellers",  hu:"Elad\u00f3i bek.",           en:"Submissions",icon:"sellers"},
 ];
 function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggleTheme}){
+  const[lang,switchLang]=useLang();
   const kn=orders.filter(o=>o.status==="krakow").length;
   const pn=orders.filter(o=>["pending","awaiting"].includes(o.status)).length;
   const un=(convos||[]).reduce((a,c)=>a+(c.unread||0),0);
+  const T_ADMIN={hu:{public:"Nyilv\u00e1nos",logout:"Kijelentkez\u00e9s",dark:"S\u00f6t\u00e9t m\u00f3d",light:"Vil\u00e1gos m\u00f3d"},
+                 en:{public:"Public view",logout:"Sign out",dark:"Dark mode",light:"Light mode"}};
+  const ta=T_ADMIN[lang]||T_ADMIN.hu;
   const Dot=({n,col})=>n>0?(
     <span style={{background:col,color:"#fff",borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:800,minWidth:14,textAlign:"center",lineHeight:"14px"}}>{n}</span>
   ):null;
@@ -339,7 +343,7 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggle
           return(
             <button key={n.id} onClick={()=>setActive(n.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 20px",border:"none",cursor:"pointer",width:"100%",textAlign:"left",background:"transparent",borderLeft:a?"2px solid "+C.acc:"2px solid transparent",color:a?"#e8e8e8":"#3a3a3a",fontSize:12,fontWeight:a?600:400,fontFamily:F,transition:"color 0.1s"}}>
               <span style={{width:14,height:14,flexShrink:0,color:a?C.acc:C.mu,display:"flex",alignItems:"center",justifyContent:"center"}}>{ICON[n.icon]&&ICON[n.icon]({width:14,height:14})}</span>
-              <span style={{flex:1}}>{n.label}</span>
+              <span style={{flex:1}}>{lang==="en"?n.en:n.hu}</span>
               {n.id==="krakow"&&<Dot n={kn} col={C.purple}/>}
               {n.id==="orders"&&<Dot n={pn} col={C.amber}/>}
               {n.id==="inbox"&&<Dot n={un} col={C.acc}/>}
@@ -348,7 +352,7 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggle
         })}
       </div>
       <div style={{borderTop:"1px solid #141414",padding:"14px 20px"}}>
-        <button onClick={onPublic} style={{display:"block",width:"100%",background:"transparent",border:"1px solid #1c1c1c",borderRadius:4,padding:"6px 10px",color:"#2e2e2e",fontSize:10,cursor:"pointer",fontFamily:F,textAlign:"left",marginBottom:14}}>Katalógus</button>
+        <button onClick={onPublic} style={{display:"block",width:"100%",background:"transparent",border:"1px solid #1c1c1c",borderRadius:4,padding:"6px 10px",color:"#2e2e2e",fontSize:10,cursor:"pointer",fontFamily:F,textAlign:"left",marginBottom:14}}>{ta.public}</button>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
           <div style={{width:22,height:22,background:C.acc,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}}>{user.name[0]}</div>
           <div style={{overflow:"hidden"}}>
@@ -356,7 +360,7 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggle
             <div style={{fontSize:9,color:"#2e2e2e",textTransform:"uppercase",letterSpacing:1}}>{user.role}</div>
           </div>
         </div>
-        <button onClick={onToggleTheme} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"transparent",border:"none",color:C.mu,fontSize:11,cursor:"pointer",padding:"6px 0",fontFamily:F,marginBottom:4}}><span style={{width:12,height:12,display:"flex",alignItems:"center"}}>{_theme==="light"?ICON.moon({width:12,height:12}):ICON.sun({width:12,height:12})}</span>{_theme==="light"?"Sötét mód":"Világos mód"}</button><button onClick={onLogout} style={{background:"transparent",border:"none",color:"#282828",fontSize:10,cursor:"pointer",fontFamily:F,padding:0}}>Kijelentkezés</button>
+        <button onClick={onToggleTheme} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"transparent",border:"none",color:C.mu,fontSize:11,cursor:"pointer",padding:"6px 0",fontFamily:F,marginBottom:4}}><span style={{width:12,height:12,display:"flex",alignItems:"center"}}>{_theme==="light"?ICON.moon({width:12,height:12}):ICON.sun({width:12,height:12})}</span>{_theme==="light"?ta.dark:ta.light}</button><button onClick={onLogout} style={{background:"transparent",border:"none",color:"#282828",fontSize:10,cursor:"pointer",fontFamily:F,padding:0}}>{ta.logout}</button>
       </div>
     </div>
   );
@@ -1460,6 +1464,7 @@ function CatalogueManager({user}){
   const[items,setItems]=useState([]);
   const[loaded,setLoaded]=useState(false);
   const[learned,setLearned]=useState({});
+  const[copiedId,setCopiedId]=useState(null);
   const[showForm,setShowForm]=useState(false);
   const[images,setImages]=useState([]);
   const[analyzing,setAnalyzing]=useState(false);
@@ -1470,17 +1475,24 @@ function CatalogueManager({user}){
 
   // Load images for an item - supports both old (single key) and new (per-image) formats
   const loadItemImages=async(itemId)=>{
-    // Try new format first: catalogue_imgcount_<id> + catalogue_img_<id>_<index>
     const count=await db.get("catalogue_imgcount_"+itemId,true);
     if(typeof count==="number"&&count>0){
+      console.log("[Autorra admin] Item "+itemId+" expects "+count+" images");
       const imgs=await Promise.all(
         Array.from({length:count},(_,i)=>db.get("catalogue_img_"+itemId+"_"+i,true))
       );
-      return imgs.filter(x=>typeof x==="string"&&x.length>0);
+      const valid=imgs.filter(x=>typeof x==="string"&&x.length>0);
+      console.log("[Autorra admin] Item "+itemId+" loaded "+valid.length+"/"+count+" images");
+      return valid;
     }
-    // Fallback to old format: catalogue_img_<id> (array)
+    // Legacy fallback
     const legacy=await db.get("catalogue_img_"+itemId,true);
-    return Array.isArray(legacy)?legacy:[];
+    if(Array.isArray(legacy)){
+      console.log("[Autorra admin] Item "+itemId+" legacy format: "+legacy.length+" images");
+      return legacy;
+    }
+    console.log("[Autorra admin] Item "+itemId+" has no images");
+    return [];
   };
 
   const refreshItems=async()=>{
@@ -1843,23 +1855,85 @@ function CatalogueManager({user}){
                 <Btn v="danger" sz="sm" onClick={e=>{e.stopPropagation();remove(item.id);}}>Törlés</Btn>
               </div>
             </div>
-            {/* Detail expand */}
+            {/* Detail expand - professional layout */}
             {(detail&&detail.id)===item.id&&(
-              <div style={{borderTop:`1px solid ${C.bd}`,padding:"16px 18px",background:C.s2}}>
-                {(item.images||[]).length>0&&(
-                  <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-                    {item.images.map((src,i)=><img key={i} src={src} alt="" style={{height:90,width:90,objectFit:"cover",borderRadius:8,border:`1px solid ${C.bd}`}}/>)}
+              <div style={{borderTop:`1px solid ${C.bd}`,background:C.s2,padding:20}}>
+                {/* Action bar */}
+                <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
+                  <button onClick={e=>{e.stopPropagation();const url=window.location.origin+window.location.pathname+"?item="+item.id;navigator.clipboard.writeText(url);setCopiedId(item.id);setTimeout(()=>setCopiedId(null),1800);}} style={{padding:"6px 12px",background:"transparent",border:`1px solid ${copiedId===item.id?"#16a34a":C.bd}`,color:copiedId===item.id?"#16a34a":C.t2,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:F,letterSpacing:0.3}}>
+                    {copiedId===item.id?"✓ Másolva":"Link másolása"}
+                  </button>
+                  <button onClick={e=>{e.stopPropagation();const url=window.location.origin+window.location.pathname+"?item="+item.id;window.open(url,"_blank");}} style={{padding:"6px 12px",background:"transparent",border:`1px solid ${C.bd}`,color:C.t2,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:F,letterSpacing:0.3}}>
+                    Nyilvános nézet ↗
+                  </button>
+                </div>
+                
+                <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 280px",gap:20,alignItems:"start"}}>
+                  {/* Left: Images gallery */}
+                  <div>
+                    {(item.images&&item.images.length)?(
+                      <>
+                        <div style={{background:C.bg,border:`1px solid ${C.bd}`,aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",marginBottom:10}}>
+                          <img src={item.images[0]} alt={item.partName} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}} onError={e=>{e.currentTarget.style.display="none";}}/>
+                        </div>
+                        {item.images.length>1&&(
+                          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
+                            {item.images.map((src,i)=>(
+                              <div key={i} style={{width:64,height:64,border:`1px solid ${C.bd}`,overflow:"hidden",flexShrink:0,background:C.bg}}>
+                                <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.currentTarget.style.display="none";}}/>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ):(
+                      <div style={{background:C.bg,border:`1px solid ${C.bd}`,aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center",color:C.mu,fontSize:12}}>
+                        Nincs kép
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Details */}
+                  <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                    {/* Price */}
+                    <div style={{background:C.s1,border:`1px solid ${C.bd}`,padding:14}}>
+                      <div style={{fontSize:9,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:4}}>ÁR</div>
+                      <div style={{fontSize:22,fontWeight:900,color:C.acc,letterSpacing:-0.5,lineHeight:1}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":"—"}</div>
+                    </div>
+
+                    {/* Specs table */}
+                    <div style={{background:C.s1,border:`1px solid ${C.bd}`}}>
+                      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                        <tbody>
+                          {[
+                            ["Kategória",item.category],
+                            ["Jármű",item.car],
+                            ["OEM",item.serialNumber],
+                            ["Állapot",item.condition],
+                            ["Átvétel",item.pickup],
+                            ["Kapcsolat",item.contact],
+                          ].filter(([_,v])=>v).map(([k,v])=>(
+                            <tr key={k} style={{borderBottom:`1px solid ${C.bd}`}}>
+                              <td style={{padding:"8px 12px",color:C.mu,width:"40%"}}>{k}</td>
+                              <td style={{padding:"8px 12px",color:C.tx,fontWeight:600,fontFamily:k==="OEM"?"monospace":F,fontSize:k==="OEM"?11:12,textAlign:"right"}}>{v}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Meta */}
+                    {item.publishedBy&&<div style={{fontSize:10,color:C.mu,textAlign:"right"}}>Közzétette: {item.publishedBy}{item.publishedAt?" · "+new Date(item.publishedAt).toLocaleDateString("hu"):""}</div>}
+                  </div>
+                </div>
+
+                {/* Bottom: description */}
+                {item.description&&(
+                  <div style={{marginTop:18,paddingTop:18,borderTop:`1px solid ${C.bd}`}}>
+                    <div style={{fontSize:9,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:8,textTransform:"uppercase"}}>Leírás</div>
+                    <div style={{fontSize:13,color:C.t2,lineHeight:1.65,whiteSpace:"pre-wrap"}}>{item.description}</div>
                   </div>
                 )}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
-                  {[["Kateg\u00f3ria",item.category||"-"],["J\u00e1rm\u0171",item.car||"-"],["Cikksz\u00e1m",item.serialNumber||"-"],["\u00c1llapot",item.condition],["\u00c1r",item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":"-"],["El\u00e9rhet\u0151s\u00e9g",item.contact||"-"],["\u00c1tv\u00e9tel",item.pickup||"-"]].map(([k,v])=>(
-                    <div key={k} style={{background:C.s1,borderRadius:8,padding:"10px 12px"}}>
-                      <div style={{fontSize:9,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:3}}>{k.toUpperCase()}</div>
-                      <div style={{fontSize:12,color:C.tx,fontWeight:600}}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-                {item.description&&<div style={{fontSize:12,color:C.t2,lineHeight:1.65}}>{item.description}</div>}
               </div>
             )}
           </div>
@@ -1885,7 +1959,54 @@ function PublicCatalogue({onBack,onAdmin}){
   const[imgIdx,setImgIdx]=useState(0);
   const[lang,switchLang,t]=useLang();
   const[theme,setTheme]=useState(_theme);
+  const[eurRate,setEurRate]=useState(0.0025); // HUF to EUR fallback
+  const[copied,setCopied]=useState(false);
   const isDark=theme==="dark";
+
+  // Load EUR exchange rate from calculator settings
+  useEffect(()=>{
+    db.get("calc_live_rates",true).then(d=>{
+      try{
+        const parsed=typeof d==="string"?JSON.parse(d):d;
+        if(parsed&&parsed.rates&&parsed.rates.EUR&&parsed.rates.HUF){
+          // rates are per 1 PLN, so HUF->EUR = EUR/HUF
+          setEurRate(parsed.rates.EUR/parsed.rates.HUF);
+        }
+      }catch{}
+    });
+  },[]);
+
+  // Share/URL routing: support ?item=ID deep links
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    const itemId=params.get("item");
+    if(itemId&&items.length>0){
+      const found=items.find(x=>String(x.id)===itemId);
+      if(found){setSel(found);setImgIdx(0);}
+    }
+  },[items.length]);
+
+  // When opening detail, update URL + scroll top; when closing, clear URL
+  useEffect(()=>{
+    if(sel){
+      const url=new URL(window.location);
+      url.searchParams.set("item",sel.id);
+      window.history.replaceState({},"",url);
+      window.scrollTo({top:0,behavior:"smooth"});
+      // Auto-minimize category selector when viewing a detail
+      setCatOpen(false);
+    }else{
+      const url=new URL(window.location);
+      url.searchParams.delete("item");
+      window.history.replaceState({},"",url);
+    }
+  },[sel]);
+
+  // When filters change while a detail is open, clear the detail
+  useEffect(()=>{
+    if(sel)setSel(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cond,cat,catParent,make,search]);
 
   const loadImages=async(itemId)=>{
     const count=await db.get("catalogue_imgcount_"+itemId,true);
@@ -2086,88 +2207,107 @@ function PublicCatalogue({onBack,onAdmin}){
           ))}
         </div>)}
 
-        {/* -- Detail view (Allegro style inline page) -- */}
+        {/* -- Detail view (Allegro-style inline product page) -- */}
         {sel&&(
           <div style={{background:card,border:`1px solid ${border}`,padding:24,marginBottom:24}}>
-            {/* Back button */}
-            <div style={{marginBottom:20}}>
+            {/* Back breadcrumb + share row */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
               <button onClick={()=>setSel(null)} style={{background:"transparent",border:"none",color:mu,fontSize:12,cursor:"pointer",fontFamily:F,padding:0,display:"flex",alignItems:"center",gap:4}}>
                 {"\u2039 "}{lang==="en"?"Back to list":"Vissza a list\u00e1hoz"}
               </button>
+              <button onClick={()=>{navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),1800);}} style={{background:"transparent",border:`1px solid ${border}`,color:copied?"#16a34a":mu,fontSize:11,cursor:"pointer",fontFamily:F,padding:"5px 10px",fontWeight:600,letterSpacing:0.3}}>
+                {copied?(lang==="en"?"Copied":"M\u00e1solva"):(lang==="en"?"Copy link":"Link m\u00e1sol\u00e1sa")}
+              </button>
             </div>
 
-            {/* Top: breadcrumb + title */}
-            <div style={{marginBottom:16}}>
-              {sel.category&&<div style={{fontSize:11,color:mu,marginBottom:8,letterSpacing:0.5,textTransform:"uppercase",fontWeight:600}}>{sel.category}</div>}
-              <div style={{display:"flex",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                <h1 style={{fontSize:24,fontWeight:800,color:tx,lineHeight:1.3,flex:1,minWidth:250,margin:0}}>{sel.partName}</h1>
-                <span style={{background:COND_C2[sel.condition]||"#888",color:"#fff",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:800,letterSpacing:0.5}}>{lang==="en"?(condLabel[sel.condition]||sel.condition):sel.condition}</span>
-              </div>
-            </div>
-
-            {/* Main row: images center, price/contact right */}
-            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 320px",gap:24,marginBottom:28,alignItems:"start"}}>
-              {/* Left/Center: Image gallery */}
+            {/* Main row: images left, price/contact right */}
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 320px",gap:28,marginBottom:24,alignItems:"start"}}>
+              {/* Image gallery */}
               <div>
-                <div style={{position:"relative",background:isDark?"#1a1a22":"#f5f5f8",border:`1px solid ${border}`,borderRadius:4,overflow:"hidden",aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <div style={{position:"relative",background:isDark?"#1a1a22":"#f5f5f8",border:`1px solid ${border}`,overflow:"hidden",aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   {((sel.images&&sel.images.length)||0)>0?(
-                    <img src={sel.images[imgIdx]} alt={sel.partName} style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+                    <img key={sel.id+"-"+imgIdx} src={sel.images[imgIdx]} alt={sel.partName} style={{maxWidth:"100%",maxHeight:"100%",width:"auto",height:"auto",objectFit:"contain",display:"block"}} onError={e=>{e.currentTarget.style.display="none";}}/>
                   ):(
-                    <div style={{fontSize:72,opacity:0.1,color:mu}}>&#9881;</div>
+                    <div style={{fontSize:72,opacity:0.12,color:mu}}>&#9881;</div>
                   )}
                   {sel.images&&sel.images.length>1&&(
                     <>
-                      <button onClick={()=>setImgIdx(i=>(i-1+sel.images.length)%sel.images.length)} style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.9)",border:"none",borderRadius:"50%",width:40,height:40,cursor:"pointer",fontSize:18,fontFamily:F,color:"#111",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}>&#8249;</button>
-                      <button onClick={()=>setImgIdx(i=>(i+1)%sel.images.length)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.9)",border:"none",borderRadius:"50%",width:40,height:40,cursor:"pointer",fontSize:18,fontFamily:F,color:"#111",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}>&#8250;</button>
-                      <div style={{position:"absolute",bottom:10,left:"50%",transform:"translateX(-50%)",background:"rgba(0,0,0,0.7)",color:"#fff",borderRadius:12,padding:"3px 10px",fontSize:11,fontWeight:600}}>{imgIdx+1} / {sel.images.length}</div>
+                      <button onClick={()=>setImgIdx(i=>(i-1+sel.images.length)%sel.images.length)} style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.95)",border:"none",borderRadius:2,width:36,height:52,cursor:"pointer",fontSize:20,fontFamily:F,color:"#111",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(0,0,0,0.15)"}}>&#8249;</button>
+                      <button onClick={()=>setImgIdx(i=>(i+1)%sel.images.length)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.95)",border:"none",borderRadius:2,width:36,height:52,cursor:"pointer",fontSize:20,fontFamily:F,color:"#111",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(0,0,0,0.15)"}}>&#8250;</button>
+                      <div style={{position:"absolute",bottom:10,left:10,background:"rgba(0,0,0,0.7)",color:"#fff",padding:"3px 8px",fontSize:11,fontWeight:600,letterSpacing:0.3}}>{imgIdx+1} / {sel.images.length}</div>
                     </>
                   )}
                 </div>
-                {/* Thumbnail strip */}
+                {/* Thumbnails */}
                 {sel.images&&sel.images.length>1&&(
-                  <div style={{display:"flex",gap:6,marginTop:10,overflowX:"auto"}}>
+                  <div style={{display:"flex",gap:6,marginTop:10,overflowX:"auto",paddingBottom:4}}>
                     {sel.images.map((src,i)=>(
-                      <button key={i} onClick={()=>setImgIdx(i)} style={{width:72,height:72,padding:0,border:`2px solid ${i===imgIdx?"#dc2626":border}`,borderRadius:4,overflow:"hidden",cursor:"pointer",background:"transparent",flexShrink:0,transition:"border-color 0.15s"}}>
-                        <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                      <button key={i} onClick={()=>setImgIdx(i)} style={{width:68,height:68,padding:0,border:`2px solid ${i===imgIdx?"#dc2626":border}`,overflow:"hidden",cursor:"pointer",background:"transparent",flexShrink:0,transition:"border-color 0.15s"}}>
+                        <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={e=>{e.currentTarget.src="";}}/>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Right: Price + contact */}
-              <div style={{display:"flex",flexDirection:"column",gap:14,position:"sticky",top:80}}>
-                {/* Price box */}
-                <div style={{background:isDark?"#0f0f14":"#fafafc",border:`1px solid ${border}`,borderRadius:4,padding:20}}>
-                  <div style={{fontSize:32,fontWeight:900,color:"#dc2626",letterSpacing:-1,lineHeight:1,marginBottom:4}}>{sel.price?parseInt(sel.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
-                  {sel.pickup&&<div style={{fontSize:12,color:mu,marginTop:10,paddingTop:10,borderTop:`1px solid ${border}`}}>{lang==="en"?"Location: ":"Hely: "}<strong style={{color:tx}}>{sel.pickup}</strong></div>}
+              {/* Right column: title, price, contact */}
+              <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                {/* Title + condition */}
+                <div>
+                  {sel.category&&<div style={{fontSize:10,color:mu,marginBottom:8,letterSpacing:1,textTransform:"uppercase",fontWeight:700}}>{sel.category}</div>}
+                  <h1 style={{fontSize:20,fontWeight:800,color:tx,lineHeight:1.3,margin:"0 0 10px"}}>{sel.partName}</h1>
+                  <span style={{background:COND_C2[sel.condition]||"#888",color:"#fff",padding:"3px 9px",fontSize:10,fontWeight:800,letterSpacing:0.5}}>{lang==="en"?(condLabel[sel.condition]||sel.condition):sel.condition}</span>
                 </div>
 
-                {/* Contact buttons */}
+                {/* Price */}
+                <div style={{background:isDark?"#0f0f14":"#fafafc",border:`1px solid ${border}`,padding:18}}>
+                  <div style={{fontSize:30,fontWeight:900,color:"#dc2626",letterSpacing:-1,lineHeight:1}}>{sel.price?parseInt(sel.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
+                  {sel.price&&eurRate>0&&(
+                    <div style={{fontSize:13,color:mu,marginTop:6,fontWeight:500}}>\u2248 {(parseInt(sel.price||0)*eurRate).toLocaleString("hu",{maximumFractionDigits:0})} EUR</div>
+                  )}
+                </div>
+
+                {/* Contact buttons - sharp corners, red primary, WhatsApp secondary */}
                 {sel.contact&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    <a href={"tel:"+sel.contact} style={{background:"#dc2626",color:"#fff",borderRadius:4,padding:"13px 16px",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"block",letterSpacing:0.3}}>{t.call||(lang==="en"?"Call":"Felh\u00edv\u00e1s")}</a>
-                    <a href={"https://wa.me/"+(sel.contact||"").replace(/\D/g,"")} target="_blank" rel="noreferrer" style={{background:"#16a34a",color:"#fff",borderRadius:4,padding:"13px 16px",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"block",letterSpacing:0.3}}>WhatsApp</a>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    <a href={"tel:"+sel.contact} style={{background:"#dc2626",color:"#fff",padding:"13px 16px",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"block",letterSpacing:0.5}}>{t.call||(lang==="en"?"Call now":"H\u00edv\u00e1s most")}</a>
+                    <a href={"https://wa.me/"+(sel.contact||"").replace(/\D/g,"")} target="_blank" rel="noreferrer" style={{background:"transparent",color:"#dc2626",padding:"10px 16px",fontSize:12,fontWeight:700,textDecoration:"none",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:6,border:`1px solid ${isDark?"#333":"#ddd"}`,letterSpacing:0.3}}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#dc2626"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                      WhatsApp
+                    </a>
                     <div style={{fontSize:11,color:mu,textAlign:"center",marginTop:2}}>{sel.contact}</div>
                   </div>
                 )}
 
-                {/* Quick facts */}
-                <div style={{background:isDark?"#0f0f14":"#fafafc",border:`1px solid ${border}`,borderRadius:4,padding:16,fontSize:12}}>
-                  {sel.car&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{color:mu}}>{lang==="en"?"Vehicle":"J\u00e1rm\u0171"}</span><strong style={{color:tx,textAlign:"right"}}>{sel.car}</strong></div>}
-                  {sel.serialNumber&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{color:mu}}>OEM</span><strong style={{color:tx,fontFamily:"monospace",fontSize:11}}>{sel.serialNumber}</strong></div>}
-                  {sel.category&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:mu}}>{lang==="en"?"Category":"Kateg\u00f3ria"}</span><strong style={{color:tx}}>{sel.category}</strong></div>}
-                </div>
+                {sel.pickup&&<div style={{fontSize:12,color:mu,padding:"10px 14px",background:isDark?"#0f0f14":"#fafafc",border:`1px solid ${border}`}}>{lang==="en"?"Pickup: ":"\u00c1tv\u00e9tel: "}<strong style={{color:tx}}>{sel.pickup}</strong></div>}
               </div>
             </div>
 
-            {/* Bottom: description + more info */}
-            {sel.description&&(
-              <div style={{borderTop:`1px solid ${border}`,paddingTop:24}}>
-                <h3 style={{fontSize:14,fontWeight:800,color:tx,marginTop:0,marginBottom:12,textTransform:"uppercase",letterSpacing:0.5}}>{lang==="en"?"Description":"Le\u00edr\u00e1s"}</h3>
-                <p style={{fontSize:14,color:isDark?"#c8c8d8":"#333",lineHeight:1.7,margin:0,whiteSpace:"pre-wrap"}}>{sel.description}</p>
+            {/* Bottom: description + specs table */}
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,1fr)",gap:28,borderTop:`1px solid ${border}`,paddingTop:24}}>
+              {/* Description */}
+              <div>
+                <h3 style={{fontSize:13,fontWeight:800,color:tx,marginTop:0,marginBottom:14,textTransform:"uppercase",letterSpacing:0.8}}>{lang==="en"?"Description":"Le\u00edr\u00e1s"}</h3>
+                {sel.description?(
+                  <p style={{fontSize:14,color:isDark?"#c8c8d8":"#333",lineHeight:1.7,margin:0,whiteSpace:"pre-wrap"}}>{sel.description}</p>
+                ):(
+                  <p style={{fontSize:13,color:mu,margin:0,fontStyle:"italic"}}>{lang==="en"?"No description provided.":"Nincs le\u00edr\u00e1s megadva."}</p>
+                )}
               </div>
-            )}
+              {/* Specs table */}
+              <div>
+                <h3 style={{fontSize:13,fontWeight:800,color:tx,marginTop:0,marginBottom:14,textTransform:"uppercase",letterSpacing:0.8}}>{lang==="en"?"Specifications":"Adatok"}</h3>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                  <tbody>
+                    {sel.car&&<tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"9px 0",color:mu,width:"45%"}}>{lang==="en"?"Vehicle":"J\u00e1rm\u0171"}</td><td style={{padding:"9px 0",color:tx,fontWeight:600,textAlign:"right"}}>{sel.car}</td></tr>}
+                    {sel.serialNumber&&<tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"9px 0",color:mu}}>OEM</td><td style={{padding:"9px 0",color:tx,fontWeight:600,fontFamily:"monospace",fontSize:12,textAlign:"right"}}>{sel.serialNumber}</td></tr>}
+                    {sel.category&&<tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"9px 0",color:mu}}>{lang==="en"?"Category":"Kateg\u00f3ria"}</td><td style={{padding:"9px 0",color:tx,fontWeight:600,textAlign:"right"}}>{sel.category}</td></tr>}
+                    <tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"9px 0",color:mu}}>{lang==="en"?"Condition":"\u00c1llapot"}</td><td style={{padding:"9px 0",color:tx,fontWeight:600,textAlign:"right"}}>{lang==="en"?(condLabel[sel.condition]||sel.condition):sel.condition}</td></tr>
+                    {sel.pickup&&<tr><td style={{padding:"9px 0",color:mu}}>{lang==="en"?"Pickup":"\u00c1tv\u00e9tel"}</td><td style={{padding:"9px 0",color:tx,fontWeight:600,textAlign:"right"}}>{sel.pickup}</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
         </div>
