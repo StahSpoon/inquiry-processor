@@ -1568,9 +1568,43 @@ function CatalogueManager({user}){
       const d=await db.get("catalogue_items",true);
       const meta=Array.isArray(d)?d:[];
       console.log("[Autorra admin] Refresh: "+meta.length+" items in storage");
-      const withImages=await Promise.all(meta.map(async item=>({...item,images:await loadItemImages(item.id)})));
-      setItems(withImages);
+      // STAGE 1: Show items immediately with no images - user sees list fast
+      setItems(meta.map(m=>({...m,images:[],_loading:true})));
       setLoaded(true);
+      // STAGE 2: Load first image + count for each item in parallel (for thumbnails)
+      const thumbPromises=meta.map(async(item)=>{
+        try{
+          const[count,firstImg]=await Promise.all([
+            db.get("catalogue_imgcount_"+item.id,true),
+            db.get("catalogue_img_"+item.id+"_0",true)
+          ]);
+          let images=[];
+          if(typeof count==="number"&&count>0&&typeof firstImg==="string"){
+            images=[firstImg];
+            // Fetch remaining images in parallel (non-blocking)
+            if(count>1){
+              Promise.all(Array.from({length:count-1},(_,i)=>db.get("catalogue_img_"+item.id+"_"+(i+1),true)))
+                .then(rest=>{
+                  const all=[firstImg,...rest.filter(x=>typeof x==="string")];
+                  setItems(cur=>cur.map(it=>it.id===item.id?{...it,images:all,_loading:false}:it));
+                }).catch(()=>{});
+            }
+          }else{
+            // Legacy fallback
+            const legacy=await db.get("catalogue_img_"+item.id,true);
+            if(Array.isArray(legacy))images=legacy;
+          }
+          return {id:item.id,images,count:typeof count==="number"?count:images.length};
+        }catch(e){return {id:item.id,images:[],count:0};}
+      });
+      const thumbs=await Promise.all(thumbPromises);
+      // Update with thumbnails (images[0] for each)
+      setItems(cur=>cur.map(it=>{
+        const t=thumbs.find(x=>x.id===it.id);
+        if(!t)return it;
+        // If only 1 image total, we're done; else keep _loading for rest
+        return {...it,images:t.images,_loading:t.count>1};
+      }));
     }catch(e){console.error("[Autorra admin] Refresh error:",e);setLoaded(true);}
   };
 
@@ -1579,7 +1613,7 @@ function CatalogueManager({user}){
     refreshItems();
     db.get("parts_learned",true).then(d=>setLearned(d&&typeof d==="object"?d:{}));
     // Periodic refresh every 30s to catch external changes (seller submissions, etc)
-    const iv=setInterval(refreshItems,30000);
+    const iv=setInterval(refreshItems,60000);
     return()=>clearInterval(iv);
   },[]);
 
@@ -1994,13 +2028,13 @@ function CatalogueManager({user}){
                     {(item.images&&item.images.length)?(
                       <>
                         <div style={{background:C.bg,border:`1px solid ${C.bd}`,aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",marginBottom:10}}>
-                          <img src={item.images[0]} alt={item.partName} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}} onError={e=>{console.warn("Image load failed:",e.currentTarget.src&&e.currentTarget.src.slice(0,60));e.currentTarget.style.opacity="0.3";}}/>
+                          <img src={item.images[0]} alt={item.partName} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}}/>
                         </div>
                         {item.images.length>1&&(
                           <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
                             {item.images.map((src,i)=>(
                               <div key={i} style={{width:64,height:64,border:`1px solid ${C.bd}`,overflow:"hidden",flexShrink:0,background:C.bg}}>
-                                <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{console.warn("Image load failed:",e.currentTarget.src&&e.currentTarget.src.slice(0,60));e.currentTarget.style.opacity="0.3";}}/>
+                                <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                               </div>
                             ))}
                           </div>
@@ -2144,11 +2178,35 @@ function PublicCatalogue({onBack,onAdmin}){
       try{
         const d=await db.get("catalogue_items",true);
         const meta=Array.isArray(d)?d.filter(i=>!i.sold):[];
-        console.log("[Autorra public] Loaded "+meta.length+" item(s)");
-        const withImages=await Promise.all(meta.map(async item=>({...item,images:await loadImages(item.id)})));
-        setItems(withImages);
-      }catch(e){console.error("[Autorra public] Load error:",e);setItems([]);}
-      setLd(false);
+        console.log("[Autorra public] Loaded "+meta.length+" item(s) - showing immediately");
+        // STAGE 1: Show items with empty images - instant render
+        setItems(meta.map(m=>({...m,images:[]})));
+        setLd(false);
+        // STAGE 2: Fetch thumbnails (first image + count) in parallel
+        await Promise.all(meta.map(async(item)=>{
+          try{
+            const[count,firstImg]=await Promise.all([
+              db.get("catalogue_imgcount_"+item.id,true),
+              db.get("catalogue_img_"+item.id+"_0",true)
+            ]);
+            if(typeof firstImg==="string"&&firstImg.length>0){
+              setItems(cur=>cur.map(it=>it.id===item.id?{...it,images:[firstImg]}:it));
+              // STAGE 3: Lazy-load remaining images in background (for detail view)
+              if(typeof count==="number"&&count>1){
+                const rest=await Promise.all(Array.from({length:count-1},(_,i)=>db.get("catalogue_img_"+item.id+"_"+(i+1),true)));
+                const all=[firstImg,...rest.filter(x=>typeof x==="string")];
+                setItems(cur=>cur.map(it=>it.id===item.id?{...it,images:all}:it));
+              }
+            }else{
+              // Legacy format fallback
+              const legacy=await db.get("catalogue_img_"+item.id,true);
+              if(Array.isArray(legacy)&&legacy.length>0){
+                setItems(cur=>cur.map(it=>it.id===item.id?{...it,images:legacy}:it));
+              }
+            }
+          }catch{}
+        }));
+      }catch(e){console.error("[Autorra public] Load error:",e);setItems([]);setLd(false);}
     })();
   },[]);
 
@@ -2347,7 +2405,7 @@ function PublicCatalogue({onBack,onAdmin}){
               <div>
                 <div style={{position:"relative",background:isDark?"#1a1a22":"#f5f5f8",border:`1px solid ${border}`,overflow:"hidden",aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   {((sel.images&&sel.images.length)||0)>0?(
-                    <img key={sel.id+"-"+imgIdx} src={sel.images[imgIdx]} alt={sel.partName} style={{maxWidth:"100%",maxHeight:"100%",width:"auto",height:"auto",objectFit:"contain",display:"block"}} onError={e=>{console.warn("Image load failed:",e.currentTarget.src&&e.currentTarget.src.slice(0,60));e.currentTarget.style.opacity="0.3";}}/>
+                    <img key={sel.id+"-"+imgIdx} src={sel.images[imgIdx]} alt={sel.partName} style={{maxWidth:"100%",maxHeight:"100%",width:"auto",height:"auto",objectFit:"contain",display:"block"}}/>
                   ):(
                     <div style={{fontSize:72,opacity:0.12,color:mu}}>&#9881;</div>
                   )}
@@ -2441,7 +2499,7 @@ function PublicCatalogue({onBack,onAdmin}){
                     {recs.map(r=>(
                       <div key={r.id} onClick={()=>{setSel(r);setImgIdx(0);window.scrollTo({top:0,behavior:"smooth"});}} style={{background:card,border:`1px solid ${border}`,cursor:"pointer",overflow:"hidden",transition:"border-color 0.15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#dc262688"} onMouseLeave={e=>e.currentTarget.style.borderColor=border}>
                         <div style={{aspectRatio:"4/3",background:isDark?"#1a1a22":"#f0f0f5",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-                          {r.images&&r.images[0]?<img src={r.images[0]} alt={r.partName} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{console.warn("Image load failed:",e.currentTarget.src&&e.currentTarget.src.slice(0,60));e.currentTarget.style.opacity="0.3";}}/>:<div style={{fontSize:32,opacity:0.15,color:mu}}>&#9881;</div>}
+                          {r.images&&r.images[0]?<img src={r.images[0]} alt={r.partName} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{fontSize:32,opacity:0.15,color:mu}}>&#9881;</div>}
                         </div>
                         <div style={{padding:10}}>
                           <div style={{fontSize:12,fontWeight:700,color:tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:3}}>{r.partName}</div>
