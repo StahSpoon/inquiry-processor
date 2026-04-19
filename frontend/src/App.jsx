@@ -1022,7 +1022,7 @@ function Orders({orders,onChange,onDelete,initialFilter,onFilterUsed}){
   return(<div><PH sub="Összes rendelés - státusz bármelyik irányba módosítható">Rendelések</PH><div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}><div style={{flex:1,position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.mu,fontSize:12,pointerEvents:"none"}}>d</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Keresés ügyfél, alkatrész, autó..." style={{...inp,paddingLeft:32}}/></div><select value={filter} onChange={e=>setFilter(e.target.value)} style={{...inp,width:"auto"}}><option value="all">Összes ({orders.length})</option>{SQ.map(s=><option key={s} value={s}>{ST[s].label} ({orders.filter(o=>o.status===s).length})</option>)}</select></div>
     <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"visible"}}><div style={{display:"grid",gridTemplateColumns:"90px 140px 1fr 55px 165px 85px 110px",padding:"9px 16px",borderBottom:`1px solid ${C.bd}`,background:C.s2,borderRadius:"10px 10px 0 0"}}>{["Platform","\u00dcgyf\u00e9l","Alkatr\u00e9sz / Aut\u00f3","Db","St\u00e1tusz","D\u00e1tum",""].map((h,i)=>(<div key={i} style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8}}>{h.toUpperCase()}</div>))}</div>
     {shown.length===0&&<div style={{padding:32,textAlign:"center",color:C.mu,fontSize:13}}>Nincs találat.</div>}
-    {shown.map((o,i)=>{const next=SQ[SQ.indexOf(o.status)+1];const isOpen=detailId===o.id;return(<div key={o.id} style={{borderBottom:i<shown.length-1?`1px solid ${C.bd}`:"none"}}><div onClick={()=>setDetailId(isOpen?null:o.id)} style={{display:"grid",gridTemplateColumns:"90px 140px 1fr 55px 165px 85px 110px",padding:"12px 16px",alignItems:"center",cursor:"pointer",background:isOpen?C.acc+"06":"transparent"}}><div style={{display:"flex",flexDirection:"column",gap:3}}><PBadge p={o.platform}/><span style={{fontSize:9,color:C.mu,fontFamily:"monospace",fontWeight:700}}>{makeId(o.customer,o.zip)}</span></div><div style={{fontSize:13,fontWeight:600,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{o.customer}</div><div style={{paddingRight:8}}><div style={{fontSize:13,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{partsLabel(o)}</div><div style={{fontSize:11,color:C.mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.car}</div></div><div style={{fontSize:13,color:C.t2,fontWeight:getParts(o).length>1?700:400,color:getParts(o).length>1?C.amber:C.t2}}>{totalQty(o)} db</div>
+    {shown.map((o,i)=>{const next=SQ[SQ.indexOf(o.status)+1];const isOpen=detailId===o.id;return(<div key={o.id} style={{borderBottom:i<shown.length-1?`1px solid ${C.bd}`:"none"}}><div onClick={()=>setDetailId(isOpen?null:o.id)} style={{display:"grid",gridTemplateColumns:"90px 140px 1fr 55px 165px 85px 110px",padding:"12px 16px",alignItems:"center",cursor:"pointer",background:isOpen?C.acc+"06":"transparent"}}><div style={{display:"flex",flexDirection:"column",gap:3}}><PBadge p={o.platform}/><span style={{fontSize:9,color:C.mu,fontFamily:"monospace",fontWeight:700}}>{makeId(o.customer,o.zip)}</span></div><div style={{fontSize:13,fontWeight:600,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{o.customer}</div><div style={{paddingRight:8}}><div style={{fontSize:13,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{partsLabel(o)}</div><div style={{fontSize:11,color:C.mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.car}</div></div><div style={{fontSize:13,fontWeight:getParts(o).length>1?700:400,color:getParts(o).length>1?C.amber:C.t2}}>{totalQty(o)} db</div>
     <div style={{position:"relative"}}><SBadge status={o.status} onClick={e=>{e.stopPropagation();setStatusPicker(statusPicker===o.id?null:o.id);}}/>{statusPicker===o.id&&(<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:100,background:C.s1,border:`1px solid ${C.bd2}`,borderRadius:8,padding:6,minWidth:200,boxShadow:"0 8px 24px rgba(0,0,0,0.4)"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,padding:"4px 8px 6px"}}>STÁTUSZ MÓDOSÍTÁSA</div>{SQ.map(s=>(<button key={s} onClick={()=>{onChange(o.id,{status:s});setStatusPicker(null);if(STATUS_NOTIFY[s])triggerNotify(o,s);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"7px 10px",background:o.status===s?ST[s].bg:"transparent",border:"none",cursor:"pointer",borderRadius:5,fontFamily:F}}><span style={{width:7,height:7,borderRadius:"50%",background:ST[s].color,flexShrink:0}}/><span style={{fontSize:12,color:o.status===s?ST[s].color:C.t2,fontWeight:o.status===s?700:500}}>{ST[s].label}</span>{o.status===s&&<span style={{marginLeft:"auto",fontSize:10,color:ST[s].color}}>✓</span>}</button>))}</div>)}</div>
     <div style={{fontSize:11,color:C.mu}}>{o.date}</div><div style={{display:"flex",gap:4}}>{next&&<Btn v="subtle" sz="sm" onClick={e=>{e.stopPropagation();onChange(o.id,{status:next});if(STATUS_NOTIFY[next])triggerNotify(o,next);}} style={{padding:"4px 8px",fontSize:11}}>→</Btn>}<Btn v="ghost" sz="sm" onClick={e=>{e.stopPropagation();startEdit(o);}} style={{padding:"4px 8px",fontSize:12}}>✎</Btn><Btn v="ghost" sz="sm" onClick={e=>{e.stopPropagation();setDel(o.id);}} style={{padding:"4px 8px",fontSize:12,color:C.acc}}>✕</Btn></div></div>{o.note&&<div style={{padding:"0 16px 10px",fontSize:11,color:C.mu}}>c {o.note}</div>}{isOpen&&(<div style={{padding:"0 16px 16px",borderTop:`1px solid ${C.bd}`,marginTop:4,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>ID</div><div style={{fontSize:13,fontWeight:800,color:C.tx,fontFamily:"monospace"}}>{makeId(o.customer,o.zip)}</div></div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>PLATFORM</div><PBadge p={o.platform}/></div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>DÁTUM</div><div style={{fontSize:13,color:C.tx}}>{o.date}</div></div><div style={{gridColumn:"1/-1",background:C.s2,borderRadius:8,padding:"12px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:8}}>ALKATRÉSZEK ({getParts(o).length} tétel · {totalQty(o)} db)</div>{getParts(o).map((p,pi)=>(<div key={pi} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderTop:pi>0?`1px solid ${C.bd}`:"none"}}><span style={{fontSize:11,color:C.mu,minWidth:20}}>{pi+1}.</span><span style={{flex:1,fontSize:13,color:C.tx}}>{p.name}</span><span style={{fontSize:12,fontWeight:700,color:C.acc,minWidth:40,textAlign:"right"}}>{p.qty} db</span>{p.allegroLink&&<a href={p.allegroLink} target="_blank" rel="noreferrer" style={{fontSize:10,color:C.blue,textDecoration:"none"}}>d</a>}</div>))}</div><div style={{background:C.s2,borderRadius:8,padding:"11px 14px"}}><div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.8,marginBottom:4}}>JÁRMŰ</div><div style={{fontSize:13,color:C.tx}}>{o.car}</div></div></div>)}</div>)})}</div>
     <div style={{marginTop:8,fontSize:11,color:C.mu}}>Kattintson a státuszra a módosításhoz - bármely irányba.</div>
@@ -1463,6 +1463,48 @@ function Templates(){
 }
 
 const BF={partName:"",category:"",_catParent:"",serialNumber:"",serialNumberVerified:"",serialNumberWarning:"",serialNumberConfidence:"",car:"",condition:"J\u00f3",price:"",estimatedPriceHUF:"",priceNote:"",contact:"",pickup:"",description:""};
+
+// -- Vehicle database for autocomplete in catalogue form --
+const VEHICLE_DB=[
+  "Audi A3 8P (2003-2012)","Audi A3 8V (2012-2020)","Audi A3 8Y (2020+)","Audi A4 B6 (2000-2006)","Audi A4 B7 (2004-2008)","Audi A4 B8 (2007-2015)","Audi A4 B9 (2015+)",
+  "Audi A5 8T (2007-2016)","Audi A5 F5 (2016+)","Audi A6 C5 (1997-2005)","Audi A6 C6 (2004-2011)","Audi A6 C7 (2011-2018)","Audi A6 C8 (2018+)",
+  "Audi Q3 8U (2011-2018)","Audi Q3 F3 (2018+)","Audi Q5 8R (2008-2017)","Audi Q5 FY (2017+)","Audi Q7 4L (2005-2015)","Audi Q7 4M (2015+)",
+  "BMW 1-es F20 (2011-2019)","BMW 1-es F40 (2019+)","BMW 3-as E46 (1998-2006)","BMW 3-as E90 (2005-2012)","BMW 3-as F30 (2012-2019)","BMW 3-as G20 (2018+)",
+  "BMW 5-ös E39 (1995-2003)","BMW 5-ös E60 (2003-2010)","BMW 5-ös F10 (2010-2017)","BMW 5-ös G30 (2017+)","BMW X1 E84 (2009-2015)","BMW X1 F48 (2015-2022)",
+  "BMW X3 E83 (2003-2010)","BMW X3 F25 (2010-2017)","BMW X3 G01 (2017+)","BMW X5 E53 (1999-2006)","BMW X5 E70 (2006-2013)","BMW X5 F15 (2013-2018)","BMW X5 G05 (2018+)",
+  "Mercedes-Benz A-osztály W169 (2004-2012)","Mercedes-Benz A-osztály W176 (2012-2018)","Mercedes-Benz A-osztály W177 (2018+)",
+  "Mercedes-Benz C-osztály W203 (2000-2007)","Mercedes-Benz C-osztály W204 (2007-2014)","Mercedes-Benz C-osztály W205 (2014-2021)","Mercedes-Benz C-osztály W206 (2021+)",
+  "Mercedes-Benz E-osztály W211 (2002-2009)","Mercedes-Benz E-osztály W212 (2009-2016)","Mercedes-Benz E-osztály W213 (2016+)",
+  "Mercedes-Benz GLA X156 (2013-2020)","Mercedes-Benz GLC X253 (2015+)","Mercedes-Benz GLE W166 (2015-2019)","Mercedes-Benz GLE W167 (2019+)",
+  "Mercedes-Benz ML W164 (2005-2011)","Mercedes-Benz ML W166 (2011-2015)","Mercedes-Benz Sprinter W906 (2006-2018)","Mercedes-Benz Sprinter W907 (2018+)",
+  "VW Golf IV (1997-2003)","VW Golf V (2003-2008)","VW Golf VI (2008-2012)","VW Golf VII (2012-2020)","VW Golf VIII (2019+)",
+  "VW Passat B5 (1996-2005)","VW Passat B6 (2005-2010)","VW Passat B7 (2010-2014)","VW Passat B8 (2014+)",
+  "VW Polo 9N (2001-2009)","VW Polo 6R (2009-2017)","VW Polo AW (2017+)","VW Tiguan 5N (2007-2016)","VW Tiguan AD1 (2016+)",
+  "VW Touareg 7L (2002-2010)","VW Touareg 7P (2010-2018)","VW Touareg CR (2018+)","VW T5 (2003-2015)","VW T6 (2015-2019)","VW T6.1 (2019+)",
+  "Skoda Octavia I 1U (1996-2010)","Skoda Octavia II 1Z (2004-2013)","Skoda Octavia III 5E (2012-2020)","Skoda Octavia IV NX (2020+)",
+  "Skoda Fabia I 6Y (1999-2007)","Skoda Fabia II 5J (2007-2014)","Skoda Fabia III NJ (2014-2021)","Skoda Fabia IV (2021+)",
+  "Skoda Superb I 3U (2001-2008)","Skoda Superb II 3T (2008-2015)","Skoda Superb III 3V (2015+)","Skoda Yeti 5L (2009-2017)","Skoda Kodiaq NS (2016+)",
+  "Opel Astra G (1998-2004)","Opel Astra H (2004-2010)","Opel Astra J (2009-2015)","Opel Astra K (2015-2021)","Opel Astra L (2021+)",
+  "Opel Corsa C (2000-2006)","Opel Corsa D (2006-2014)","Opel Corsa E (2014-2019)","Opel Corsa F (2019+)","Opel Insignia A (2008-2017)","Opel Insignia B (2017+)",
+  "Ford Focus Mk1 (1998-2004)","Ford Focus Mk2 (2004-2011)","Ford Focus Mk3 (2011-2018)","Ford Focus Mk4 (2018+)","Ford Fiesta Mk6 (2008-2017)","Ford Fiesta Mk7 (2017+)",
+  "Ford Mondeo Mk3 (2000-2007)","Ford Mondeo Mk4 (2007-2014)","Ford Mondeo Mk5 (2014-2022)","Ford Kuga Mk1 (2008-2012)","Ford Kuga Mk2 (2012-2019)","Ford Kuga Mk3 (2019+)",
+  "Ford Transit Custom (2013+)","Ford Transit Mk7 (2006-2013)","Ford Transit Mk8 (2013+)",
+  "Renault Clio III (2005-2012)","Renault Clio IV (2012-2019)","Renault Clio V (2019+)","Renault Megane III (2008-2016)","Renault Megane IV (2016+)",
+  "Renault Laguna III (2007-2015)","Renault Scenic III (2009-2016)","Renault Scenic IV (2016+)","Renault Trafic II (2001-2014)","Renault Trafic III (2014+)",
+  "Peugeot 206 (1998-2012)","Peugeot 207 (2006-2014)","Peugeot 208 (2012-2019)","Peugeot 208 II (2019+)","Peugeot 307 (2001-2008)","Peugeot 308 I (2007-2013)","Peugeot 308 II (2013-2021)","Peugeot 308 III (2021+)",
+  "Peugeot 407 (2004-2011)","Peugeot 508 I (2010-2018)","Peugeot 508 II (2018+)","Peugeot 3008 I (2008-2016)","Peugeot 3008 II (2016+)","Peugeot 5008 I (2009-2017)","Peugeot 5008 II (2017+)",
+  "Citroen C3 I (2002-2009)","Citroen C3 II (2009-2016)","Citroen C3 III (2016+)","Citroen C4 I (2004-2010)","Citroen C4 II (2010-2018)","Citroen C4 III (2020+)",
+  "Citroen C5 II (2008-2017)","Citroen Berlingo II (2008-2018)","Citroen Berlingo III (2018+)",
+  "Toyota Corolla E12 (2001-2007)","Toyota Corolla E15 (2007-2013)","Toyota Corolla E17 (2013-2019)","Toyota Corolla E21 (2019+)","Toyota Yaris XP10 (1999-2005)","Toyota Yaris XP9 (2005-2011)","Toyota Yaris XP13 (2011-2020)","Toyota Yaris XP21 (2020+)",
+  "Toyota Avensis T25 (2003-2009)","Toyota Avensis T27 (2009-2018)","Toyota RAV4 XA20 (2000-2005)","Toyota RAV4 XA30 (2005-2012)","Toyota RAV4 XA40 (2012-2018)","Toyota RAV4 XA50 (2018+)",
+  "Honda Civic VIII (2005-2012)","Honda Civic IX (2012-2017)","Honda Civic X (2016-2021)","Honda Civic XI (2021+)","Honda CR-V III (2007-2012)","Honda CR-V IV (2012-2018)","Honda CR-V V (2017-2022)","Honda CR-V VI (2022+)",
+  "Hyundai i10 I (2007-2014)","Hyundai i10 II (2013-2019)","Hyundai i10 III (2019+)","Hyundai i20 I (2008-2014)","Hyundai i20 II (2014-2020)","Hyundai i20 III (2020+)","Hyundai i30 I (2007-2012)","Hyundai i30 II (2012-2017)","Hyundai i30 III (2017-2022)","Hyundai i30 IV (2023+)",
+  "Hyundai Tucson TL (2015-2020)","Hyundai Tucson NX4 (2020+)","Hyundai Santa Fe DM (2012-2018)","Hyundai Santa Fe TM (2018+)","Hyundai Kona OS (2017-2022)","Hyundai Kona SX2 (2022+)",
+  "Kia Ceed I (2006-2012)","Kia Ceed II (2012-2018)","Kia Ceed III (2018+)","Kia Sportage III (2010-2016)","Kia Sportage IV (2015-2021)","Kia Sportage V (2021+)","Kia Sorento II (2009-2014)","Kia Sorento III (2014-2020)","Kia Sorento IV (2020+)",
+  "Nissan Qashqai J10 (2006-2013)","Nissan Qashqai J11 (2013-2021)","Nissan Qashqai J12 (2021+)","Nissan X-Trail T30 (2001-2007)","Nissan X-Trail T31 (2007-2013)","Nissan X-Trail T32 (2013-2022)","Nissan X-Trail T33 (2022+)","Nissan Juke F15 (2010-2019)","Nissan Juke F16 (2019+)",
+  "Volvo XC60 I (2008-2017)","Volvo XC60 II (2017+)","Volvo XC90 I (2002-2014)","Volvo XC90 II (2014+)","Volvo V40 II (2012-2019)","Volvo V60 I (2010-2018)","Volvo V60 II (2018+)","Volvo V70 III (2007-2016)","Volvo S60 II (2010-2018)","Volvo S60 III (2018+)",
+];
+
 function CatalogueManager({user}){
   const[items,setItems]=useState([]);
   const[loaded,setLoaded]=useState(false);
@@ -1560,7 +1602,7 @@ function CatalogueManager({user}){
       const knownSerials=Object.entries(learned).slice(0,20).map(([s,v])=>`${s} = ${v.car} (${v.partName})`).join("\n");
       const msgContent=[
         ...rawImgs.map(b64=>({type:"image",source:{type:"base64",media_type:b64.split(";")[0].split(":")[1],data:b64.split(",")[1]}})),
-        {type:"text",text:`You are an expert auto parts identification specialist.\n\nSTEP 1 - READ SERIAL:\n- Read every character digit by digit exactly as stamped/engraved/printed\n- Common misreads to avoid: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z\n- Note any ambiguous characters in serialNumberWarning\n\nSTEP 2 - LOOK UP SERIAL IN YOUR KNOWLEDGE BASE:\n- Search your training data for this exact OEM/part number\n- What part does this number correspond to? (manufacturer catalog knowledge)\n- Does it match what you visually see in the image? Flag any mismatch in serialNumberVerified\n- What is the retail/wholesale price range for this part in PLN?\n\nSTEP 3 - IDENTIFY CAR FROM SERIAL (OEM prefix knowledge):\n- Mercedes-Benz: A + 3-digit chassis (A205=C-Class W205 2014-2021, A213=E-Class W213 2016+, A166=ML/GL W166, A176=A-Class W176, A117=CLA, A172=SLK)\n- VW/Skoda/Seat: 1K=Golf V/VI MkV, 5K=Golf VI, 5Q=Golf VII, 8P=Audi A3 8P, 8V=Audi A3 8V, 3C=Passat B6\n- BMW: 31xx=E90/E91 3-series, 34xx=brakes, prefix 51=body, 3310=steering; generation from last 2 digits of number\n- Opel: 13xxx, 90xxx series\n- Ford: 1xxx, 2xxx series\n- Use prefix + your knowledge to give FULL: Make + Model + Generation code + Year range\n- e.g. Mercedes-Benz C-Class W205 2014-2021, BMW 3 Series E90 2005-2012\n- NEVER just a brand name - always include model + generation\n- If truly unknown after lookup: null\n${knownSerials?"\\nSTEP 4 - CHECK AGAINST YOUR CORRECTIONS:\\n"+knownSerials:""}\n\nCRITICAL: Your response MUST start with { and end with }. Do NOT write any text before the opening brace. Do NOT say "Looking at" or "I can see" or any preamble. Return ONLY the raw JSON object, nothing else:\n{"partName":"specific Hungarian part name","serialNumber":"exact digits or null","serialNumberVerified":"cross-reference result","serialNumberWarning":"ambiguous chars or null","serialNumberConfidence":"high/medium/low","car":"make model year or null","condition":"J\u00f3","estimatedPricePLN":0,"estimatedPriceHUF":0,"priceNote":"OEM vs aftermarket range","description":"2-3 sentence Hungarian description"}`}
+        {type:"text",text:`You are an expert auto parts identification specialist.\n\nSTEP 1 - READ SERIAL:\n- Read every character digit by digit exactly as stamped/engraved/printed\n- Common misreads to avoid: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z\n- Note any ambiguous characters in serialNumberWarning\n\nSTEP 2 - LOOK UP SERIAL IN YOUR KNOWLEDGE BASE:\n- Search your training data for this exact OEM/part number\n- What part does this number correspond to? (manufacturer catalog knowledge)\n- Does it match what you visually see in the image? Flag any mismatch in serialNumberVerified\n- What is the retail/wholesale price range for this part in PLN?\n\nSTEP 3 - IDENTIFY CAR FROM SERIAL (OEM prefix knowledge):\n- Mercedes-Benz: A + 3-digit chassis (A205=C-Class W205 2014-2021, A213=E-Class W213 2016+, A166=ML/GL W166, A176=A-Class W176, A117=CLA, A172=SLK)\n- VW/Skoda/Seat: 1K=Golf V/VI MkV, 5K=Golf VI, 5Q=Golf VII, 8P=Audi A3 8P, 8V=Audi A3 8V, 3C=Passat B6\n- BMW: 31xx=E90/E91 3-series, 34xx=brakes, prefix 51=body, 3310=steering; generation from last 2 digits of number\n- Opel: 13xxx, 90xxx series\n- Ford: 1xxx, 2xxx series\n- Use prefix + your knowledge to give FULL: Make + Model + Generation code + Year range\n- e.g. Mercedes-Benz C-Class W205 2014-2021, BMW 3 Series E90 2005-2012\n- NEVER just a brand name - always include model + generation\n- If truly unknown after lookup: null\n${knownSerials?"\\nSTEP 4 - CHECK AGAINST YOUR CORRECTIONS:\\n"+knownSerials:""}\n\nSTEP 5 - CATEGORIZE the part: pick categoryId from the schema and a matching Hungarian subcategory name (e.g. Féktárcsa, Lengéscsillapító, Fényszóró, etc). STEP 6 - Write a 3-4 sentence HUNGARIAN SALES description: emphasize quality, car fit, condition, use active confident language like "Kiváló állapot", "Eredeti gyári", "Azonnal beépíthető". End with subtle call-to-action.\n\nCRITICAL: Your response MUST start with { and end with }. Do NOT write any text before the opening brace. Do NOT say "Looking at" or "I can see" or any preamble. Return ONLY the raw JSON object, nothing else:\n{"partName":"","serialNumber":"","serialNumberVerified":"","serialNumberWarning":"","serialNumberConfidence":"high|medium|low","car":"Make Model Generation Years","categoryId":"Fékrendszer|Motor|Felfüggesztés|Kormányzás|Hajtáslánc|Karosszéria|BelsoTer|Elektromos|Huto|Kipufogo|Vilagitas|Szurok|Egyeb","category":"Hungarian subcategory name","condition":"Új|Kiváló|Jó|Közepes|Javított|Felújított|Hibás","estimatedPricePLN":0,"estimatedPriceHUF":0,"priceNote":"","description":"3-4 Hungarian sales sentences"}`}
       ];
       const txt=await ai([{role:"user",content:msgContent}]);
       // Extract first balanced JSON object from AI response (handles preamble text)
@@ -1596,6 +1638,8 @@ function CatalogueManager({user}){
         description:d.description||"",
         estimatedPriceHUF:d.estimatedPriceHUF?""+d.estimatedPriceHUF:"",
         priceNote:d.priceNote||"",
+        _catParent:d.categoryId||x._catParent||"",
+        category:d.category||x.category||"",
       }));
     }catch(e){console.error("AI analyse error:",e);alert("AI elemz\u00e9si hiba: "+(e.message||"ismeretlen"));}
     clearTimeout(timeoutId);
@@ -1791,7 +1835,18 @@ function CatalogueManager({user}){
                 <button onClick={()=>setForm(x=>({...x,car:learned[form.serialNumber.toUpperCase()].car,partName:learned[form.serialNumber.toUpperCase()].partName}))} style={{marginLeft:"auto",background:C.green+"20",color:C.green,border:"none",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:F}}>Alkalmaz</button>
               </div>
             )}
-            <Field label="Kompatibilis jármű" {...f("car")} placeholder="pl. VW Golf VII 2013-2020"/>
+            <Field label="Kompatibilis jármű">
+              <input 
+                list="vehicle-db-list"
+                value={form.car||""}
+                onChange={e=>setField("car",e.target.value)}
+                placeholder="pl. VW Golf VII (2012-2020) - kezdj gépelni"
+                style={inp}
+              />
+              <datalist id="vehicle-db-list">
+                {VEHICLE_DB.map(v=><option key={v} value={v}/>)}
+              </datalist>
+            </Field>
             <Field label="Állapot">
               <select value={form.condition||"J\u00f3"} onChange={e=>setField("condition",e.target.value)} style={inp}>
                 {CONDITIONS.map(c=><option key={c}>{c}</option>)}
@@ -1877,13 +1932,13 @@ function CatalogueManager({user}){
                     {(item.images&&item.images.length)?(
                       <>
                         <div style={{background:C.bg,border:`1px solid ${C.bd}`,aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",marginBottom:10}}>
-                          <img src={item.images[0]} alt={item.partName} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}} onError={e=>{e.currentTarget.style.display="none";}}/>
+                          <img src={item.images[0]} alt={item.partName} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}} onError={e=>{console.warn("Image load failed:",e.currentTarget.src&&e.currentTarget.src.slice(0,60));e.currentTarget.style.opacity="0.3";}}/>
                         </div>
                         {item.images.length>1&&(
                           <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
                             {item.images.map((src,i)=>(
                               <div key={i} style={{width:64,height:64,border:`1px solid ${C.bd}`,overflow:"hidden",flexShrink:0,background:C.bg}}>
-                                <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.currentTarget.style.display="none";}}/>
+                                <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{console.warn("Image load failed:",e.currentTarget.src&&e.currentTarget.src.slice(0,60));e.currentTarget.style.opacity="0.3";}}/>
                               </div>
                             ))}
                           </div>
@@ -2229,7 +2284,7 @@ function PublicCatalogue({onBack,onAdmin}){
               <div>
                 <div style={{position:"relative",background:isDark?"#1a1a22":"#f5f5f8",border:`1px solid ${border}`,overflow:"hidden",aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   {((sel.images&&sel.images.length)||0)>0?(
-                    <img key={sel.id+"-"+imgIdx} src={sel.images[imgIdx]} alt={sel.partName} style={{maxWidth:"100%",maxHeight:"100%",width:"auto",height:"auto",objectFit:"contain",display:"block"}} onError={e=>{e.currentTarget.style.display="none";}}/>
+                    <img key={sel.id+"-"+imgIdx} src={sel.images[imgIdx]} alt={sel.partName} style={{maxWidth:"100%",maxHeight:"100%",width:"auto",height:"auto",objectFit:"contain",display:"block"}} onError={e=>{console.warn("Image load failed:",e.currentTarget.src&&e.currentTarget.src.slice(0,60));e.currentTarget.style.opacity="0.3";}}/>
                   ):(
                     <div style={{fontSize:72,opacity:0.12,color:mu}}>&#9881;</div>
                   )}
@@ -2266,7 +2321,7 @@ function PublicCatalogue({onBack,onAdmin}){
                 <div style={{background:isDark?"#0f0f14":"#fafafc",border:`1px solid ${border}`,padding:18}}>
                   <div style={{fontSize:30,fontWeight:900,color:"#dc2626",letterSpacing:-1,lineHeight:1}}>{sel.price?parseInt(sel.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
                   {sel.price&&eurRate>0&&(
-                    <div style={{fontSize:13,color:mu,marginTop:6,fontWeight:500}}>\u2248 {(parseInt(sel.price||0)*eurRate).toLocaleString("hu",{maximumFractionDigits:0})} EUR</div>
+                    <div style={{fontSize:13,color:mu,marginTop:6,fontWeight:500}}>≈ {(parseInt(sel.price||0)*eurRate).toLocaleString("hu",{maximumFractionDigits:0})} €</div>
                   )}
                 </div>
 
@@ -2311,6 +2366,31 @@ function PublicCatalogue({onBack,onAdmin}){
                 </table>
               </div>
             </div>
+          
+            {/* Recommended for you */}
+            {(()=>{
+              const recs=items.filter(x=>x.id!==sel.id&&(x.category===sel.category||x.car===sel.car)).slice(0,4);
+              if(recs.length===0)return null;
+              return(
+                <div style={{borderTop:`1px solid ${border}`,marginTop:24,paddingTop:24}}>
+                  <h3 style={{fontSize:13,fontWeight:800,color:tx,margin:"0 0 16px",textTransform:"uppercase",letterSpacing:0.8}}>{lang==="en"?"You might also like":"Ajánljuk neked"}</h3>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:12}}>
+                    {recs.map(r=>(
+                      <div key={r.id} onClick={()=>{setSel(r);setImgIdx(0);window.scrollTo({top:0,behavior:"smooth"});}} style={{background:card,border:`1px solid ${border}`,cursor:"pointer",overflow:"hidden",transition:"border-color 0.15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#dc262688"} onMouseLeave={e=>e.currentTarget.style.borderColor=border}>
+                        <div style={{aspectRatio:"4/3",background:isDark?"#1a1a22":"#f0f0f5",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+                          {r.images&&r.images[0]?<img src={r.images[0]} alt={r.partName} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{console.warn("Image load failed:",e.currentTarget.src&&e.currentTarget.src.slice(0,60));e.currentTarget.style.opacity="0.3";}}/>:<div style={{fontSize:32,opacity:0.15,color:mu}}>&#9881;</div>}
+                        </div>
+                        <div style={{padding:10}}>
+                          <div style={{fontSize:12,fontWeight:700,color:tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:3}}>{r.partName}</div>
+                          {r.car&&<div style={{fontSize:10,color:mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:6}}>{r.car}</div>}
+                          <div style={{fontSize:14,fontWeight:900,color:"#dc2626"}}>{r.price?parseInt(r.price||0).toLocaleString("hu")+" Ft":"—"}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
         </div>
