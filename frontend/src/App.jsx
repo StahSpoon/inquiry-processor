@@ -1505,6 +1505,29 @@ const VEHICLE_DB=[
   "Volvo XC60 I (2008-2017)","Volvo XC60 II (2017+)","Volvo XC90 I (2002-2014)","Volvo XC90 II (2014+)","Volvo V40 II (2012-2019)","Volvo V60 I (2010-2018)","Volvo V60 II (2018+)","Volvo V70 III (2007-2016)","Volvo S60 II (2010-2018)","Volvo S60 III (2018+)",
 ];
 
+// -- Parse VEHICLE_DB into hierarchical structure for cascading selector --
+const VEHICLE_TREE=(()=>{
+  const tree={};
+  VEHICLE_DB.forEach(v=>{
+    // Format: "Make Model Generation (year-year)"
+    // e.g. "Audi A4 B8 (2007-2015)", "Mercedes-Benz C-osztály W205 (2014-2021)"
+    const match=v.match(/^([A-Za-z-]+(?:\s[A-Z]+)?)\s+(.+?)\s*\(([^)]+)\)$/);
+    if(!match)return;
+    const make=match[1].trim();
+    const rest=match[2].trim();
+    const years=match[3].trim();
+    // Split rest into model + generation (generation is the last word usually)
+    const parts=rest.split(" ");
+    const gen=parts[parts.length-1];
+    const model=parts.slice(0,-1).join(" ")||parts[0];
+    if(!tree[make])tree[make]={};
+    if(!tree[make][model])tree[make][model]=[];
+    tree[make][model].push({gen,years,full:v});
+  });
+  return tree;
+})();
+const VEHICLE_MAKES=Object.keys(VEHICLE_TREE).sort();
+
 function CatalogueManager({user}){
   const[items,setItems]=useState([]);
   const[loaded,setLoaded]=useState(false);
@@ -1778,7 +1801,25 @@ function CatalogueManager({user}){
       {/* Upload form */}
       {showForm&&(
         <div style={{background:C.s1,border:`1px solid ${C.acc}25`,borderRadius:10,padding:22,marginBottom:20}}>
-          <div style={{fontSize:10,color:C.mu,fontWeight:700,letterSpacing:1,marginBottom:14}}>ÚJ ALKATRÉSZ</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,paddingBottom:14,borderBottom:`1px solid ${C.bd}`}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:800,color:C.tx,marginBottom:2}}>Új alkatrész feltöltése</div>
+              <div style={{fontSize:11,color:C.mu}}>
+                {images.length===0?"1. Tölts fel képeket az AI elemzéshez":
+                 analyzing?"2. AI elemzés folyamatban...":
+                 form.partName?"3. Ellenőrizd és finomítsd az adatokat":"2. Várjuk az AI elemzést"}
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.mu,fontWeight:700,letterSpacing:0.5}}>
+                <div style={{width:22,height:22,borderRadius:"50%",background:images.length>0?C.acc:C.bd,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800}}>1</div>
+                <div style={{width:20,height:2,background:images.length>0?C.acc:C.bd}}/>
+                <div style={{width:22,height:22,borderRadius:"50%",background:form.partName?C.acc:(analyzing?C.amber:C.bd),color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800}}>2</div>
+                <div style={{width:20,height:2,background:form.partName?C.acc:C.bd}}/>
+                <div style={{width:22,height:22,borderRadius:"50%",background:(form.partName&&form.price)?C.acc:C.bd,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800}}>3</div>
+              </div>
+            </div>
+          </div>
 
           {/* Image upload */}
           <div onClick={()=>fileRef.current&&fileRef.current.click()} style={{border:`2px dashed ${images.length?C.acc:C.bd2}`,borderRadius:8,padding:16,textAlign:"center",cursor:"pointer",marginBottom:16}}>
@@ -1836,16 +1877,31 @@ function CatalogueManager({user}){
               </div>
             )}
             <Field label="Kompatibilis jármű">
-              <input 
-                list="vehicle-db-list"
-                value={form.car||""}
-                onChange={e=>setField("car",e.target.value)}
-                placeholder="pl. VW Golf VII (2012-2020) - kezdj gépelni"
-                style={inp}
-              />
-              <datalist id="vehicle-db-list">
-                {VEHICLE_DB.map(v=><option key={v} value={v}/>)}
-              </datalist>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                <select value={form._make||""} onChange={e=>{const m=e.target.value;setForm(x=>({...x,_make:m,_model:"",_gen:"",car:m}));}} style={{...inp,fontSize:12}}>
+                  <option value="">Márka...</option>
+                  {VEHICLE_MAKES.map(m=><option key={m} value={m}>{m}</option>)}
+                </select>
+                <select value={form._model||""} onChange={e=>{const mo=e.target.value;setForm(x=>({...x,_model:mo,_gen:"",car:x._make+" "+mo}));}} disabled={!form._make} style={{...inp,fontSize:12,opacity:form._make?1:0.5}}>
+                  <option value="">Modell...</option>
+                  {form._make&&VEHICLE_TREE[form._make]&&Object.keys(VEHICLE_TREE[form._make]).sort().map(m=><option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              {form._make&&form._model&&VEHICLE_TREE[form._make]&&VEHICLE_TREE[form._make][form._model]&&(
+                <select value={form._gen||""} onChange={e=>{const g=e.target.value;const entry=VEHICLE_TREE[form._make][form._model].find(x=>x.gen===g);setForm(x=>({...x,_gen:g,car:entry?entry.full:(x._make+" "+x._model)}));}} style={{...inp,fontSize:12,marginTop:6}}>
+                  <option value="">Generáció / évjárat...</option>
+                  {VEHICLE_TREE[form._make][form._model].map((g,i)=><option key={i} value={g.gen}>{g.gen} ({g.years})</option>)}
+                </select>
+              )}
+              {form.car&&(
+                <div style={{fontSize:11,color:C.green,marginTop:6,display:"flex",alignItems:"center",gap:6}}>
+                  <span>✓</span>
+                  <span style={{flex:1}}>{form.car}</span>
+                  <button onClick={()=>setForm(x=>({...x,_make:"",_model:"",_gen:"",car:""}))} style={{background:"transparent",border:"none",color:C.mu,cursor:"pointer",fontSize:10,padding:0,fontFamily:F}}>× törlés</button>
+                </div>
+              )}
+              <div style={{fontSize:10,color:C.mu,marginTop:6}}>Vagy írj be egyénit:</div>
+              <input value={form.car||""} onChange={e=>setField("car",e.target.value)} placeholder="pl. Ford Focus Mk3 (2011-2018)" style={{...inp,fontSize:12,marginTop:4}}/>
             </Field>
             <Field label="Állapot">
               <select value={form.condition||"J\u00f3"} onChange={e=>setField("condition",e.target.value)} style={inp}>
@@ -1888,11 +1944,17 @@ function CatalogueManager({user}){
         {items.map(item=>(
           <div key={item.id} style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden",opacity:item.sold?0.5:1}}>
             {/* Summary row */}
-            <div onClick={()=>setDetail((detail&&detail.id)===item.id?null:item)} style={{display:"flex",gap:14,alignItems:"center",padding:"14px 16px",cursor:"pointer"}}>
-              {(item.images||[]).slice(0,2).map((src,i)=>(
-                <img key={i} src={src} alt="" style={{width:52,height:52,objectFit:"cover",borderRadius:7,border:`1px solid ${C.bd}`,flexShrink:0}}/>
-              ))}
-              {(!item.images||item.images.length===0)&&<div style={{width:52,height:52,background:C.s3,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>9</div>}
+            <div onClick={()=>setDetail((detail&&detail.id)===item.id?null:item)} style={{display:"flex",gap:14,alignItems:"center",padding:"14px 16px",cursor:"pointer",transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background=C.s2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <div style={{width:64,height:64,borderRadius:6,overflow:"hidden",border:`1px solid ${C.bd}`,flexShrink:0,background:C.s3,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+                {item.images&&item.images[0]?(
+                  <img src={item.images[0]} alt={item.partName} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.currentTarget.style.display="none";}}/>
+                ):(
+                  <span style={{fontSize:22,opacity:0.3,color:C.mu}}>&#9881;</span>
+                )}
+                {item.images&&item.images.length>1&&(
+                  <div style={{position:"absolute",bottom:2,right:2,background:"rgba(0,0,0,0.75)",color:"#fff",fontSize:9,fontWeight:700,padding:"1px 4px",borderRadius:2}}>{item.images.length}</div>
+                )}
+              </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:3}}>
                   <span style={{fontSize:14,fontWeight:700,color:C.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.partName}</span>{item.category&&<span style={{fontSize:9,background:C.acc+"15",color:C.acc,borderRadius:4,padding:"1px 6px",fontWeight:700,flexShrink:0}}>{item.category}</span>}
@@ -2060,11 +2122,12 @@ function PublicCatalogue({onBack,onAdmin}){
     }
   },[sel]);
 
-  // When filters change while a detail is open, clear the detail
+  // When user APPLIES a filter (category, condition, make), close the detail to show results
+  // Search typing does NOT close the detail - user may be searching while reading specs
   useEffect(()=>{
     if(sel)setSel(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cond,cat,catParent,make,search]);
+  },[cond,cat,catParent,make]);
 
   const loadImages=async(itemId)=>{
     const count=await db.get("catalogue_imgcount_"+itemId,true);
@@ -2572,7 +2635,14 @@ function LandingPage({onCatalogue,onAdmin,onLogin,loginOpen,setLoginOpen}){
 
 export default function App(){
   const[user,setUser]=useState(null);
-  const[page,setPage]=useState("home");
+  // If URL has ?item=ID or ?page=catalogue, open catalogue directly
+  const[page,setPage]=useState(()=>{
+    try{
+      const params=new URLSearchParams(window.location.search);
+      if(params.get("item")||params.get("page")==="catalogue")return "catalogue";
+    }catch{}
+    return "home";
+  });
   const[loginOpen,setLoginOpen]=useState(false);
   const[theme,setTheme]=useState(_theme);
   const toggleTheme=()=>{const n=theme==="dark"?"light":"dark";applyTheme(n);setTheme(n);};
