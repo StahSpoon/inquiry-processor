@@ -333,9 +333,12 @@ function Sidebar({active,setActive,user,onLogout,onPublic,orders,convos,onToggle
   ):null;
   return(
     <div style={{width:200,background:C.s1,borderRight:`1px solid ${C.bd}`,display:"flex",flexDirection:"column",minHeight:"100vh",flexShrink:0}}>
-      <div style={{padding:"24px 20px 18px"}}>
-        <div style={{fontSize:16,fontWeight:900,color:C.tx,letterSpacing:-0.5}}>auto<span style={{color:C.acc}}>rra</span></div>
-        <div style={{fontSize:9,color:C.mu,letterSpacing:2,textTransform:"uppercase",marginTop:3}}>PL → HU</div>
+      <div style={{padding:"24px 20px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+        <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+          <div style={{fontSize:16,fontWeight:900,color:C.tx,letterSpacing:-0.5}}>auto<span style={{color:C.acc}}>rra</span></div>
+          <span style={{fontSize:9,fontWeight:600,color:C.mu,letterSpacing:1,textTransform:"uppercase"}}>{lang}</span>
+        </div>
+        <button onClick={()=>switchLang(lang==="hu"?"en":"hu")} style={{background:"transparent",border:`1px solid ${C.bd}`,color:C.mu,fontSize:9,fontWeight:700,padding:"3px 7px",cursor:"pointer",fontFamily:F,letterSpacing:0.5}}>{lang==="hu"?"EN":"HU"}</button>
       </div>
       <div style={{flex:1,paddingTop:2}}>
         {NAV.filter(n=>!n.admin||user.role==="admin").map(n=>{
