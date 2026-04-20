@@ -15,7 +15,27 @@ const ST={
   ready:   {color:C.green, bg:"#16a34a12",label:"\u00c1tvehet\u0151"},
 };
 const SQ=["pending","awaiting","ordered","krakow","transit","ready"];
-const CONDITIONS=["\u00daj","Kiv\u00e1l\u00f3","J\u00f3","K\u00f6zepes","Jav\u00edtott","Fel\u00faj\u00edtott","Hib\u00e1s"];
+const CONDITIONS=["\u00daj","Kiv\u00e1l\u00f3","J\u00f3","Fel\u00faj\u00edtott"];
+
+// -- Position/side filter for orientation-specific parts --
+const POSITIONS=[
+  {id:"",hu:"Nincs",en:"N/A"},
+  {id:"L",hu:"Bal",en:"Left"},
+  {id:"R",hu:"Jobb",en:"Right"},
+  {id:"F",hu:"Első",en:"Front"},
+  {id:"B",hu:"Hátsó",en:"Rear"},
+  {id:"FL",hu:"Bal első",en:"Front left"},
+  {id:"FR",hu:"Jobb első",en:"Front right"},
+  {id:"BL",hu:"Bal hátsó",en:"Rear left"},
+  {id:"BR",hu:"Jobb hátsó",en:"Rear right"},
+  {id:"U",hu:"Felső",en:"Upper"},
+  {id:"D",hu:"Alsó",en:"Lower"},
+  {id:"C",hu:"Közép",en:"Center"},
+];
+const positionLabel=(p,lang)=>{const o=POSITIONS.find(x=>x.id===p);return o?(lang==="en"?o.en:o.hu):"";};
+// Categories where position matters (so we show the filter)
+const POSITIONAL_CATS=["Karosszéria","Világítás","Vilagitas","BelsoTer","Felfüggesztés","Fékrendszer"];
+
 // -- i18n translations --
 const T={
   hu:{
@@ -1462,7 +1482,7 @@ function Templates(){
   );
 }
 
-const BF={partName:"",category:"",_catParent:"",serialNumber:"",serialNumberVerified:"",serialNumberWarning:"",serialNumberConfidence:"",car:"",condition:"J\u00f3",price:"",estimatedPriceHUF:"",priceNote:"",contact:"",pickup:"",description:""};
+const BF={partName:"",category:"",_catParent:"",serialNumber:"",serialNumberVerified:"",serialNumberWarning:"",serialNumberConfidence:"",car:"",condition:"J\u00f3",position:"",price:"",estimatedPriceHUF:"",priceNote:"",contact:"",pickup:"",description:""};
 
 // -- Vehicle database for autocomplete in catalogue form --
 const VEHICLE_DB=[
@@ -1503,6 +1523,88 @@ const VEHICLE_DB=[
   "Kia Ceed I (2006-2012)","Kia Ceed II (2012-2018)","Kia Ceed III (2018+)","Kia Sportage III (2010-2016)","Kia Sportage IV (2015-2021)","Kia Sportage V (2021+)","Kia Sorento II (2009-2014)","Kia Sorento III (2014-2020)","Kia Sorento IV (2020+)",
   "Nissan Qashqai J10 (2006-2013)","Nissan Qashqai J11 (2013-2021)","Nissan Qashqai J12 (2021+)","Nissan X-Trail T30 (2001-2007)","Nissan X-Trail T31 (2007-2013)","Nissan X-Trail T32 (2013-2022)","Nissan X-Trail T33 (2022+)","Nissan Juke F15 (2010-2019)","Nissan Juke F16 (2019+)",
   "Volvo XC60 I (2008-2017)","Volvo XC60 II (2017+)","Volvo XC90 I (2002-2014)","Volvo XC90 II (2014+)","Volvo V40 II (2012-2019)","Volvo V60 I (2010-2018)","Volvo V60 II (2018+)","Volvo V70 III (2007-2016)","Volvo S60 II (2010-2018)","Volvo S60 III (2018+)",
+,
+  "Dacia Logan I (2004-2012)",
+  "Dacia Logan II (2012-2020)",
+  "Dacia Logan III (2020+)",
+  "Dacia Sandero I (2007-2012)",
+  "Dacia Sandero II (2012-2020)",
+  "Dacia Sandero III (2020+)",
+  "Dacia Duster I (2010-2017)",
+  "Dacia Duster II (2017+)",
+  "Dacia Lodgy (2012+)",
+  "Dacia Dokker (2012-2021)",
+  "Fiat Punto II (1999-2010)",
+  "Fiat Grande Punto (2005-2018)",
+  "Fiat 500 (2007+)",
+  "Fiat Panda III (2011+)",
+  "Fiat Tipo (2015+)",
+  "Fiat Doblo II (2009-2022)",
+  "Fiat Ducato III (2006-2014)",
+  "Fiat Ducato III Facelift (2014+)",
+  "Seat Ibiza IV 6J (2008-2017)",
+  "Seat Ibiza V KJ (2017+)",
+  "Seat Leon II 1P (2005-2012)",
+  "Seat Leon III 5F (2012-2020)",
+  "Seat Leon IV KL (2020+)",
+  "Seat Toledo IV (2012-2018)",
+  "Seat Ateca (2016+)",
+  "Seat Alhambra II (2010-2020)",
+  "Mazda 2 DY (2002-2007)",
+  "Mazda 2 DE (2007-2014)",
+  "Mazda 2 DJ (2014-2022)",
+  "Mazda 3 BK (2003-2009)",
+  "Mazda 3 BL (2009-2013)",
+  "Mazda 3 BM (2013-2019)",
+  "Mazda 3 BP (2019+)",
+  "Mazda 6 GG (2002-2008)",
+  "Mazda 6 GH (2007-2013)",
+  "Mazda 6 GJ (2012-2021)",
+  "Mazda 6 GL (2021+)",
+  "Mazda CX-5 KE (2012-2017)",
+  "Mazda CX-5 KF (2017+)",
+  "Mazda CX-3 DK (2015+)",
+  "Suzuki Swift III (2004-2010)",
+  "Suzuki Swift IV (2010-2017)",
+  "Suzuki Swift V (2017+)",
+  "Suzuki SX4 I (2006-2014)",
+  "Suzuki SX4 II (2013-2022)",
+  "Suzuki Vitara III (2015+)",
+  "Suzuki Jimny III (1998-2018)",
+  "Suzuki Jimny IV (2018+)",
+  "Mitsubishi Lancer IX (2003-2008)",
+  "Mitsubishi Lancer X (2007-2017)",
+  "Mitsubishi Outlander II (2005-2012)",
+  "Mitsubishi Outlander III (2012-2021)",
+  "Mitsubishi Outlander IV (2021+)",
+  "Mitsubishi ASX (2010+)",
+  "Mitsubishi Pajero IV (2006-2021)",
+  "Mitsubishi Colt VI (2004-2012)",
+  "Mitsubishi L200 IV (2005-2015)",
+  "Mitsubishi L200 V (2015+)",
+  "Subaru Impreza III (2007-2011)",
+  "Subaru Impreza IV (2011-2016)",
+  "Subaru Impreza V (2016+)",
+  "Subaru Forester III (2008-2013)",
+  "Subaru Forester IV (2012-2018)",
+  "Subaru Forester V (2018+)",
+  "Subaru Outback IV (2009-2014)",
+  "Subaru Outback V (2014-2019)",
+  "Subaru Outback VI (2019+)",
+  "Subaru XV I (2012-2017)",
+  "Subaru XV II (2017+)",
+  "Chevrolet Aveo T250 (2006-2011)",
+  "Chevrolet Aveo T300 (2011-2020)",
+  "Chevrolet Cruze J300 (2008-2016)",
+  "Chevrolet Captiva (2006-2018)",
+  "Chevrolet Spark (2009+)",
+  "Chevrolet Lacetti (2002-2011)",
+  "Chevrolet Orlando (2010-2018)",
+  "Chrysler 300C I (2004-2010)",
+  "Chrysler 300C II (2011-2023)",
+  "Chrysler PT Cruiser (2000-2010)",
+  "Chrysler Voyager IV (2001-2007)",
+  "Chrysler Voyager V (2008-2016)",
 ];
 
 // -- Parse VEHICLE_DB into hierarchical structure for cascading selector --
@@ -1533,6 +1635,30 @@ function CatalogueManager({user}){
   const[loaded,setLoaded]=useState(false);
   const[learned,setLearned]=useState({});
   const[copiedId,setCopiedId]=useState(null);
+  const[adminSearch,setAdminSearch]=useState("");
+  const[adminCond,setAdminCond]=useState("all");
+  const[adminCat,setAdminCat]=useState("all");
+  const[adminSold,setAdminSold]=useState("active");
+  const[lang]=useLang();
+  const T_CAT={
+    hu:{title:"Katalógus",publicView:"Nyilvános nézet",addNew:"+ Új alkatrész",cancel:"× Mégse",
+        loading:"Alkatrészek betöltése...",empty:"Nincs alkatrész. Kattints az + Új alkatrész gombra.",
+        sold:"Eladva",active:"Aktív",delete:"Törlés",copyLink:"Link másolása",copied:"✓ Másolva",
+        viewPublic:"{tc.viewPublic}",category:"Kategória",vehicle:"Jármű",
+        condition:"Állapot",pickup:"Átvétel",contact:"Kapcsolat",price:"Ár",
+        published:"Közzétette",description:"Leírás",parts:"db kép",noImage:"Nincs kép",
+        newPart:"Új alkatrész feltöltése",step1:"1. Tölts fel képeket az AI elemzéshez",
+        step2:"2. AI elemzés folyamatban...",step3:"3. Ellenőrizd és finomítsd az adatokat"},
+    en:{title:"Catalogue",publicView:"Public view",addNew:"+ New part",cancel:"× Cancel",
+        loading:"Loading parts...",empty:"No parts yet. Click + New part to get started.",
+        sold:"Sold",active:"Active",delete:"Delete",copyLink:"Copy link",copied:"✓ Copied",
+        viewPublic:"View public ↗",category:"Category",vehicle:"Vehicle",
+        condition:"Condition",pickup:"Pickup",contact:"Contact",price:"Price",
+        published:"Published by",description:"Description",parts:"images",noImage:"No image",
+        newPart:"Upload new part",step1:"1. Upload photos for AI analysis",
+        step2:"2. AI analysis in progress...",step3:"3. Review and refine details"}
+  };
+  const tc=T_CAT[lang]||T_CAT.hu;
   const[showForm,setShowForm]=useState(false);
   const[images,setImages]=useState([]);
   const[analyzing,setAnalyzing]=useState(false);
@@ -1659,7 +1785,7 @@ function CatalogueManager({user}){
       const knownSerials=Object.entries(learned).slice(0,20).map(([s,v])=>`${s} = ${v.car} (${v.partName})`).join("\n");
       const msgContent=[
         ...rawImgs.map(b64=>({type:"image",source:{type:"base64",media_type:b64.split(";")[0].split(":")[1],data:b64.split(",")[1]}})),
-        {type:"text",text:`You are an expert auto parts identification specialist.\n\nSTEP 1 - READ SERIAL:\n- Read every character digit by digit exactly as stamped/engraved/printed\n- Common misreads to avoid: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z\n- Note any ambiguous characters in serialNumberWarning\n\nSTEP 2 - LOOK UP SERIAL IN YOUR KNOWLEDGE BASE:\n- Search your training data for this exact OEM/part number\n- What part does this number correspond to? (manufacturer catalog knowledge)\n- Does it match what you visually see in the image? Flag any mismatch in serialNumberVerified\n- What is the retail/wholesale price range for this part in PLN?\n\nSTEP 3 - IDENTIFY CAR FROM SERIAL (OEM prefix knowledge):\n- Mercedes-Benz: A + 3-digit chassis (A205=C-Class W205 2014-2021, A213=E-Class W213 2016+, A166=ML/GL W166, A176=A-Class W176, A117=CLA, A172=SLK)\n- VW/Skoda/Seat: 1K=Golf V/VI MkV, 5K=Golf VI, 5Q=Golf VII, 8P=Audi A3 8P, 8V=Audi A3 8V, 3C=Passat B6\n- BMW: 31xx=E90/E91 3-series, 34xx=brakes, prefix 51=body, 3310=steering; generation from last 2 digits of number\n- Opel: 13xxx, 90xxx series\n- Ford: 1xxx, 2xxx series\n- Use prefix + your knowledge to give FULL: Make + Model + Generation code + Year range\n- e.g. Mercedes-Benz C-Class W205 2014-2021, BMW 3 Series E90 2005-2012\n- NEVER just a brand name - always include model + generation\n- If truly unknown after lookup: null\n${knownSerials?"\\nSTEP 4 - CHECK AGAINST YOUR CORRECTIONS:\\n"+knownSerials:""}\n\nSTEP 5 - CATEGORIZE the part: pick categoryId from the schema and a matching Hungarian subcategory name (e.g. Féktárcsa, Lengéscsillapító, Fényszóró, etc). STEP 6 - Write a 3-4 sentence HUNGARIAN SALES description: emphasize quality, car fit, condition, use active confident language like "Kiváló állapot", "Eredeti gyári", "Azonnal beépíthető". End with subtle call-to-action.\n\nCRITICAL: Your response MUST start with { and end with }. Do NOT write any text before the opening brace. Do NOT say "Looking at" or "I can see" or any preamble. Return ONLY the raw JSON object, nothing else:\n{"partName":"","serialNumber":"","serialNumberVerified":"","serialNumberWarning":"","serialNumberConfidence":"high|medium|low","car":"Make Model Generation Years","categoryId":"Fékrendszer|Motor|Felfüggesztés|Kormányzás|Hajtáslánc|Karosszéria|BelsoTer|Elektromos|Huto|Kipufogo|Vilagitas|Szurok|Egyeb","category":"Hungarian subcategory name","condition":"Új|Kiváló|Jó|Közepes|Javított|Felújított|Hibás","estimatedPricePLN":0,"estimatedPriceHUF":0,"priceNote":"","description":"3-4 Hungarian sales sentences"}`}
+        {type:"text",text:`You are an expert auto parts identification specialist.\n\nSTEP 1 - READ SERIAL:\n- Read every character digit by digit exactly as stamped/engraved/printed\n- Common misreads to avoid: 0 vs O, 1 vs I vs l, 5 vs 6, 6 vs 5, 8 vs B, 2 vs Z\n- Note any ambiguous characters in serialNumberWarning\n\nSTEP 2 - LOOK UP SERIAL IN YOUR KNOWLEDGE BASE:\n- Search your training data for this exact OEM/part number\n- What part does this number correspond to? (manufacturer catalog knowledge)\n- Does it match what you visually see in the image? Flag any mismatch in serialNumberVerified\n- What is the retail/wholesale price range for this part in PLN?\n\nSTEP 3 - IDENTIFY CAR FROM SERIAL (OEM prefix knowledge):\n- Mercedes-Benz: A + 3-digit chassis (A205=C-Class W205 2014-2021, A213=E-Class W213 2016+, A166=ML/GL W166, A176=A-Class W176, A117=CLA, A172=SLK)\n- VW/Skoda/Seat: 1K=Golf V/VI MkV, 5K=Golf VI, 5Q=Golf VII, 8P=Audi A3 8P, 8V=Audi A3 8V, 3C=Passat B6\n- BMW: 31xx=E90/E91 3-series, 34xx=brakes, prefix 51=body, 3310=steering; generation from last 2 digits of number\n- Opel: 13xxx, 90xxx series\n- Ford: 1xxx, 2xxx series\n- Use prefix + your knowledge to give FULL: Make + Model + Generation code + Year range\n- e.g. Mercedes-Benz C-Class W205 2014-2021, BMW 3 Series E90 2005-2012\n- NEVER just a brand name - always include model + generation\n- If truly unknown after lookup: null\n${knownSerials?"\\nSTEP 4 - CHECK AGAINST YOUR CORRECTIONS:\\n"+knownSerials:""}\n\nSTEP 5 - CATEGORIZE the part: pick categoryId from the schema and a matching Hungarian subcategory name (e.g. Féktárcsa, Lengéscsillapító, Fényszóró, etc). STEP 6 - Write a 3-4 sentence HUNGARIAN SALES description: emphasize quality, car fit, condition, use active confident language like "Kiváló állapot", "Eredeti gyári", "Azonnal beépíthető". End with subtle call-to-action.\n\nCRITICAL: Your response MUST start with { and end with }. Do NOT write any text before the opening brace. Do NOT say "Looking at" or "I can see" or any preamble. Return ONLY the raw JSON object, nothing else:\n{"partName":"","serialNumber":"","serialNumberVerified":"","serialNumberWarning":"","serialNumberConfidence":"high|medium|low","car":"Make Model Generation Years","categoryId":"Fékrendszer|Motor|Felfüggesztés|Kormányzás|Hajtáslánc|Karosszéria|BelsoTer|Elektromos|Huto|Kipufogo|Vilagitas|Szurok|Egyeb","category":"Hungarian subcategory name","condition":"Új|Kiváló|Jó|Felújított","position":"POSITION CODE or empty string. CRITICAL RULES FOR POSITION: (1) ONLY set this if you are 100% CERTAIN from visual evidence - look for mounting holes/brackets that ONLY fit one side, curvature direction, connector orientation, text/stamps like 'L', 'R', 'RH', 'LH', 'FR', 'RL' on the part. (2) If you cannot tell from the image alone with certainty, return empty string. (3) DO NOT guess based on partName alone. (4) Valid codes ONLY: L=left, R=right, F=front, B=rear/back, FL=front-left, FR=front-right, BL=rear-left, BR=rear-right, U=upper, D=lower, C=center. (5) For doors/fenders/headlights/mirrors/brake calipers use FL/FR/BL/BR. (6) For steering/center parts use C. (7) If part has no left/right distinction (e.g. oil filter, thermostat) return empty string.","estimatedPricePLN":0,"estimatedPriceHUF":0,"priceNote":"","description":"3-4 Hungarian sales sentences"}`}
       ];
       const txt=await ai([{role:"user",content:msgContent}]);
       // Extract first balanced JSON object from AI response (handles preamble text)
@@ -1697,6 +1823,7 @@ function CatalogueManager({user}){
         priceNote:d.priceNote||"",
         _catParent:d.categoryId||x._catParent||"",
         category:d.category||x.category||"",
+        position:d.position||x.position||"",
       }));
     }catch(e){console.error("AI analyse error:",e);alert("AI elemz\u00e9si hiba: "+(e.message||"ismeretlen"));}
     clearTimeout(timeoutId);
@@ -1822,13 +1949,23 @@ function CatalogueManager({user}){
   const COND_ADMIN={"J\u00f3":C.green,Bontott:C.amber,"Hib\u00e1s":C.acc,"Fel\u00faj\u00edtott":C.blue};
   const condColor=(c)=>COND_ADMIN[c]||C.mu;
 
+  const shownItems=items.filter(item=>{
+    if(adminSold==="active"&&item.sold)return false;
+    if(adminSold==="sold"&&!item.sold)return false;
+    if(adminCond!=="all"&&item.condition!==adminCond)return false;
+    if(adminCat!=="all"&&item._catParent!==adminCat&&item.category!==adminCat)return false;
+    if(!adminSearch)return true;
+    const q=adminSearch.toLowerCase();
+    return [item.partName,item.car,item.serialNumber,item.category,item.description].join(" ").toLowerCase().includes(q);
+  });
+
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
         <PH sub="Katalogus">Katalógus</PH>
         <div style={{display:"flex",gap:8}}>
-          <Btn v="outline" sz="sm" onClick={()=>{setShowForm(false);window.__setPublic&&window.__setPublic(true);}}>Nyilvános nézet</Btn>
-          <Btn onClick={()=>setShowForm(f=>!f)}>{showForm?"\u2715 M\u00e9gse":"+ \u00daj alkatr\u00e9sz"}</Btn>
+          <Btn v="outline" sz="sm" onClick={()=>{setShowForm(false);window.__setPublic&&window.__setPublic(true);}}>{tc.publicView}</Btn>
+          <Btn onClick={()=>setShowForm(f=>!f)}>{showForm?tc.cancel:tc.addNew}</Btn>
         </div>
       </div>
 
@@ -1837,11 +1974,11 @@ function CatalogueManager({user}){
         <div style={{background:C.s1,border:`1px solid ${C.acc}25`,borderRadius:10,padding:22,marginBottom:20}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,paddingBottom:14,borderBottom:`1px solid ${C.bd}`}}>
             <div>
-              <div style={{fontSize:16,fontWeight:800,color:C.tx,marginBottom:2}}>Új alkatrész feltöltése</div>
+              <div style={{fontSize:16,fontWeight:800,color:C.tx,marginBottom:2}}>{tc.newPart}</div>
               <div style={{fontSize:11,color:C.mu}}>
-                {images.length===0?"1. Tölts fel képeket az AI elemzéshez":
-                 analyzing?"2. AI elemzés folyamatban...":
-                 form.partName?"3. Ellenőrizd és finomítsd az adatokat":"2. Várjuk az AI elemzést"}
+                {images.length===0?tc.step1:
+                 analyzing?tc.step2:
+                 form.partName?tc.step3:tc.step2}
               </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1942,6 +2079,11 @@ function CatalogueManager({user}){
                 {CONDITIONS.map(c=><option key={c}>{c}</option>)}
               </select>
             </Field>
+            <Field label="Oldal / Pozíció">
+              <select value={form.position||""} onChange={e=>setField("position",e.target.value)} style={inp}>
+                {POSITIONS.map(p=><option key={p.id} value={p.id}>{p.hu}{p.id?" ("+p.id+")":""}</option>)}
+              </select>
+            </Field>
             <Field label="Ár (Ft)" {...f("price")} placeholder="pl. 25000"/>
             {form.estimatedPriceHUF&&!form.price&&(
               <div style={{gridColumn:"1/-1",background:C.blue+"08",border:`1px solid ${C.blue}20`,borderRadius:6,padding:"8px 12px",fontSize:11,color:C.t2,display:"flex",alignItems:"center",gap:8}}>
@@ -1960,22 +2102,54 @@ function CatalogueManager({user}){
         </div>
       )}
 
+      {/* Filter toolbar (shown when items loaded and not in form mode) */}
+      {loaded&&!showForm&&items.length>0&&(
+        <div style={{background:C.s1,border:`1px solid ${C.bd}`,marginBottom:12,padding:"10px 12px",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{position:"relative",flex:"1 1 220px",minWidth:180}}>
+            <input 
+              value={adminSearch} 
+              onChange={e=>setAdminSearch(e.target.value)} 
+              placeholder={lang==="en"?"Search parts, OEM, vehicle...":"Keresés: név, OEM, autó..."}
+              style={{width:"100%",padding:"7px 10px 7px 30px",background:C.s2,border:`1px solid ${C.bd}`,color:C.tx,fontSize:12,fontFamily:F,outline:"none",boxSizing:"border-box"}}
+            />
+            <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:13,color:C.mu,pointerEvents:"none"}}>&#8981;</span>
+            {adminSearch&&<button onClick={()=>setAdminSearch("")} style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:C.mu,cursor:"pointer",fontSize:14,padding:"0 4px",fontFamily:F}}>×</button>}
+          </div>
+          <select value={adminCond} onChange={e=>setAdminCond(e.target.value)} style={{padding:"7px 10px",background:C.s2,border:`1px solid ${C.bd}`,color:C.tx,fontSize:12,fontFamily:F,outline:"none",cursor:"pointer"}}>
+            <option value="all">{lang==="en"?"All conditions":"Minden állapot"}</option>
+            {CONDITIONS.map(c=><option key={c} value={c}>{lang==="en"?(condLabel[c]||c):c}</option>)}
+          </select>
+          <select value={adminCat} onChange={e=>setAdminCat(e.target.value)} style={{padding:"7px 10px",background:C.s2,border:`1px solid ${C.bd}`,color:C.tx,fontSize:12,fontFamily:F,outline:"none",cursor:"pointer"}}>
+            <option value="all">{lang==="en"?"All categories":"Minden kategória"}</option>
+            {PART_CAT_TREE.map(c=><option key={c.id} value={c.id}>{catLabel(c,lang)}</option>)}
+          </select>
+          <div style={{display:"flex",border:`1px solid ${C.bd}`}}>
+            {["active","sold","all"].map(v=>(
+              <button key={v} onClick={()=>setAdminSold(v)} style={{padding:"6px 12px",background:adminSold===v?C.acc:"transparent",color:adminSold===v?"#fff":C.mu,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,fontFamily:F}}>
+                {v==="active"?(lang==="en"?"Active":"Aktív"):v==="sold"?(lang==="en"?"Sold":"Eladott"):(lang==="en"?"All":"Összes")}
+              </button>
+            ))}
+          </div>
+          <div style={{marginLeft:"auto",fontSize:11,color:C.mu,fontWeight:600}}>{shownItems.length} / {items.length}</div>
+        </div>
+      )}
+
       {/* Items list - loading state, then empty state, then items */}
       {!loaded&&(
         <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center",color:C.mu}}>
           <div style={{display:"inline-block",width:32,height:32,border:`3px solid ${C.bd}`,borderTopColor:C.acc,borderRadius:"50%",animation:"spin 0.8s linear infinite",marginBottom:14}}/>
           <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
-          <div style={{fontSize:13}}>Alkatrészek betöltése...</div>
+          <div style={{fontSize:13}}>{tc.loading}</div>
         </div>
       )}
-      {loaded&&items.length===0&&!showForm&&(
+      {loaded&&shownItems.length===0&&!showForm&&(
         <div style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,padding:48,textAlign:"center",color:C.mu}}>
-          <div style={{fontSize:13}}>Nincs alkatrész. Kattints az "+ Új alkatrész" gombra!</div>
+          <div style={{fontSize:13}}>{tc.empty}</div>
         </div>
       )}
 
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {items.map(item=>(
+        {shownItems.map(item=>(
           <div key={item.id} style={{background:C.s1,border:`1px solid ${C.bd}`,borderRadius:10,overflow:"hidden",opacity:item.sold?0.5:1}}>
             {/* Summary row */}
             <div onClick={()=>setDetail((detail&&detail.id)===item.id?null:item)} style={{display:"flex",gap:14,alignItems:"center",padding:"14px 16px",cursor:"pointer",transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background=C.s2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -2005,8 +2179,8 @@ function CatalogueManager({user}){
                 <div style={{fontSize:10,color:C.mu}}>{item.pickup||"-"}</div>
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0}}>
-                <Btn v="outline" sz="sm" onClick={e=>{e.stopPropagation();toggleSold(item.id);}}>{item.sold?"Akt\u00edv":"Eladva"}</Btn>
-                <Btn v="danger" sz="sm" onClick={e=>{e.stopPropagation();remove(item.id);}}>Törlés</Btn>
+                <Btn v="outline" sz="sm" onClick={e=>{e.stopPropagation();toggleSold(item.id);}}>{item.sold?tc.active:tc.sold}</Btn>
+                <Btn v="danger" sz="sm" onClick={e=>{e.stopPropagation();remove(item.id);}}>{tc.delete}</Btn>
               </div>
             </div>
             {/* Detail expand - professional layout */}
@@ -2015,10 +2189,10 @@ function CatalogueManager({user}){
                 {/* Action bar */}
                 <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
                   <button onClick={e=>{e.stopPropagation();const url=window.location.origin+window.location.pathname+"?item="+item.id;navigator.clipboard.writeText(url);setCopiedId(item.id);setTimeout(()=>setCopiedId(null),1800);}} style={{padding:"6px 12px",background:"transparent",border:`1px solid ${copiedId===item.id?"#16a34a":C.bd}`,color:copiedId===item.id?"#16a34a":C.t2,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:F,letterSpacing:0.3}}>
-                    {copiedId===item.id?"✓ Másolva":"Link másolása"}
+                    {copiedId===item.id?tc.copied:tc.copyLink}
                   </button>
                   <button onClick={e=>{e.stopPropagation();const url=window.location.origin+window.location.pathname+"?item="+item.id;window.open(url,"_blank");}} style={{padding:"6px 12px",background:"transparent",border:`1px solid ${C.bd}`,color:C.t2,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:F,letterSpacing:0.3}}>
-                    Nyilvános nézet ↗
+                    {tc.viewPublic}
                   </button>
                 </div>
                 
@@ -2115,6 +2289,13 @@ function PublicCatalogue({onBack,onAdmin}){
   const[theme,setTheme]=useState(_theme);
   const[eurRate,setEurRate]=useState(0.0025); // HUF to EUR fallback
   const[copied,setCopied]=useState(false);
+  const[position,setPosition]=useState("all");
+  const[priceMin,setPriceMin]=useState("");
+  const[priceMax,setPriceMax]=useState("");
+  const[withPhotos,setWithPhotos]=useState(false);
+  const[withOEM,setWithOEM]=useState(false);
+  const[sortBy,setSortBy]=useState("newest");  // newest | priceAsc | priceDesc
+  const[viewMode,setViewMode]=useState("list");  // list | grid
   const isDark=theme==="dark";
 
   // Load EUR exchange rate from calculator settings
@@ -2161,7 +2342,7 @@ function PublicCatalogue({onBack,onAdmin}){
   useEffect(()=>{
     if(sel)setSel(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cond,cat,catParent,make]);
+  },[cond,cat,catParent,make,position,priceMin,priceMax,withPhotos,withOEM]);
 
   const loadImages=async(itemId)=>{
     const count=await db.get("catalogue_imgcount_"+itemId,true);
@@ -2223,8 +2404,18 @@ function PublicCatalogue({onBack,onAdmin}){
       }
     }
     if(make!=="all"&&!(i.car||"").toLowerCase().includes(make.toLowerCase()))return false;
+    if(position!=="all"&&(i.position||"")!==position)return false;
+    if(priceMin&&parseInt(i.price||0)<parseInt(priceMin))return false;
+    if(priceMax&&parseInt(i.price||0)>parseInt(priceMax))return false;
+    if(withPhotos&&(!i.images||i.images.length===0))return false;
+    if(withOEM&&!(i.serialNumber||"").trim())return false;
     if(!search)return true;
     return [i.partName,i.car||"",i.serialNumber||"",i.description||"",i.category||""].join(" ").toLowerCase().includes(search.toLowerCase());
+  }).sort((a,b)=>{
+    if(sortBy==="priceAsc")return (parseInt(a.price)||0)-(parseInt(b.price)||0);
+    if(sortBy==="priceDesc")return (parseInt(b.price)||0)-(parseInt(a.price)||0);
+    if(sortBy==="nameAZ")return (a.partName||"").localeCompare(b.partName||"");
+    return (b.id||0)-(a.id||0); // newest first
   });
 
   const bg=isDark?"#0c0c0f":"#f8f8fa";
@@ -2233,7 +2424,7 @@ function PublicCatalogue({onBack,onAdmin}){
   const tx=isDark?"#f0f0f8":"#111111";
   const mu=isDark?"#606070":"#888888";
   const surf=isDark?"#16161d":"#fafafa";
-  const activeFilters=[cond!=="all",cat!=="all"||catParent!=="all",make!=="all",search].filter(Boolean).length;
+  const activeFilters=[cond!=="all",cat!=="all"||catParent!=="all",make!=="all",position!=="all",priceMin!=="",priceMax!=="",withPhotos,withOEM,search].filter(Boolean).length;
 
   return(
     <div style={{minHeight:"100vh",background:bg,fontFamily:F,color:tx}}>
@@ -2260,251 +2451,507 @@ function PublicCatalogue({onBack,onAdmin}){
         <div style={{position:"absolute",top:-40,left:"50%",transform:"translateX(-50%)",width:700,height:200,background:isDark?"radial-gradient(ellipse at center top, rgba(220,38,38,0.08) 0%, transparent 70%)":"radial-gradient(ellipse at center top, rgba(220,38,38,0.04) 0%, transparent 70%)",pointerEvents:"none",zIndex:0}}/>
         <div style={{position:"relative",zIndex:1}}>
 
-        {/* -- Filter bar -- */}
-        <div style={{marginBottom:20}}>{/* Filter box */}
-          {/* Collapsed pill: shows current selection, click to expand */}
-          {!catOpen?(
-            <div style={{display:"flex",alignItems:"center",gap:8,padding:"0 0 10px"}}>
-              <button onClick={()=>setCatOpen(true)} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",border:`1px solid ${cat!=="all"?"#dc2626":border}`,background:cat!=="all"?"#dc262610":"transparent",color:cat!=="all"?"#dc2626":mu,fontSize:12,fontFamily:F,cursor:"pointer",fontWeight:cat!=="all"?700:400}}>
-                <span>{catParent==="all"?(t.allCat||"Minden kateg\u00f3ria"):(()=>{const p=PART_CAT_TREE.find(t=>t.id===catParent);return p?catLabel(p,lang):catParent;})()}{cat!=="all"&&catParent!==cat?<span style={{color:"#dc2626"}}> / {lang==="en"?(()=>{const p2=PART_CAT_TREE.find(t=>t.id===catParent);const hi=catSub(p2,"hu").indexOf(cat);return hi>=0?catSub(p2,"en")[hi]||cat:cat;})():cat}</span>:""}</span>
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{opacity:0.5,flexShrink:0}}><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
-              {cat!=="all"&&(
-                <button onClick={()=>{setCat("all");setCatParent("all");}} style={{padding:"8px 10px",border:`1px solid ${border}`,background:"transparent",color:mu,fontSize:11,fontFamily:F,cursor:"pointer"}}>x</button>
-              )}
-            </div>
-          ):(
-            <div>
-              {/* Category browser open */}
-              <div style={{border:`1px solid ${border}`,marginBottom:0}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",borderBottom:`1px solid ${border}`,background:isDark?"#0f0f14":"#f9f9fb"}}>
-                  <span style={{fontSize:11,fontWeight:700,color:mu,letterSpacing:0.5}}>{lang==="en"?"CATEGORY":"KATEG\u00d3RIA"}</span>
-                  <button onClick={()=>setCatOpen(false)} style={{background:"transparent",border:"none",color:mu,cursor:"pointer",fontSize:12,fontFamily:F}}>x</button>
-                </div>
-                <div style={{display:"flex"}}>
-                  {/* Left: parent list */}
-                  <div style={{width:180,flexShrink:0,borderRight:`1px solid ${border}`}}>
-                    {[{id:"all",label:lang==="en"?"All parts":"Minden alkatr\u00e9sz"},...PART_CAT_TREE].map(c=>{
-                      const isActive=catParent===c.id||(c.id==="all"&&catParent==="all");
-                      return(
-                        <button key={c.id} onClick={()=>{if(c.id==="all"){setCat("all");setCatParent("all");}else{setCatParent(c.id);setCat(c.id);}}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",textAlign:"left",padding:"9px 14px",border:"none",borderBottom:`1px solid ${border}`,background:isActive?"#dc262612":"transparent",color:isActive?"#dc2626":isDark?"#aaa":"#444",fontSize:12,fontWeight:isActive?700:400,cursor:"pointer",fontFamily:F}}>
-                          <span>{c.id==="all"?(lang==="en"?"All parts":"Minden alkatr\u00e9sz"):catLabel(c,lang)}</span>
-                          {c.sub&&<span style={{opacity:0.35,fontSize:10}}>{c.sub.length}</span>}
+        {/* -- Search Results Page (Allegro-style 2-column layout) -- */}
+        {!sel&&(
+          <div style={{display:"grid",gridTemplateColumns:"240px minmax(0,1fr)",gap:20,alignItems:"flex-start"}}>
+            
+            {/* ============ LEFT: FILTER SIDEBAR ============ */}
+            <aside style={{position:"sticky",top:80,background:card,border:`1px solid ${border}`}}>
+              
+              {/* Filter header */}
+              <div style={{padding:"14px 16px",borderBottom:`1px solid ${border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span style={{fontSize:12,fontWeight:800,color:tx,letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="en"?"Filters":"Szűrők"}</span>
+                {(activeFilters>0||search)&&(
+                  <button onClick={()=>{setCond("all");setCat("all");setCatParent("all");setMake("all");setPosition("all");setPriceMin("");setPriceMax("");setWithPhotos(false);setWithOEM(false);setSearch("");}} style={{background:"transparent",border:"none",color:"#dc2626",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:F,padding:0}}>{lang==="en"?"Clear":"Törlés"}</button>
+                )}
+              </div>
+
+              {/* Search */}
+              <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
+                <div style={{fontSize:10,color:mu,fontWeight:700,letterSpacing:0.8,marginBottom:6,textTransform:"uppercase"}}>{lang==="en"?"Search":"Keresés"}</div>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={lang==="en"?"Part, OEM, vehicle...":"Alkatrész, OEM, autó..."} style={{width:"100%",padding:"8px 10px",border:`1px solid ${border}`,background:bg,color:tx,fontSize:12,fontFamily:F,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+
+              {/* Category */}
+              <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
+                <div style={{fontSize:10,color:mu,fontWeight:700,letterSpacing:0.8,marginBottom:8,textTransform:"uppercase"}}>{lang==="en"?"Category":"Kategória"}</div>
+                <div style={{display:"flex",flexDirection:"column",gap:3,maxHeight:260,overflowY:"auto"}}>
+                  <button onClick={()=>{setCat("all");setCatParent("all");}} style={{textAlign:"left",padding:"5px 8px",background:catParent==="all"?"#dc262615":"transparent",border:"none",cursor:"pointer",fontSize:12,color:catParent==="all"?"#dc2626":tx,fontFamily:F,fontWeight:catParent==="all"?700:500,borderLeft:catParent==="all"?"2px solid #dc2626":"2px solid transparent"}}>{lang==="en"?"All categories":"Minden kategória"}</button>
+                  {PART_CAT_TREE.map(c=>{
+                    const isOpen=catParent===c.id;
+                    return(
+                      <div key={c.id}>
+                        <button onClick={()=>{if(isOpen){setCat("all");setCatParent("all");}else{setCatParent(c.id);setCat(c.id);}}} style={{textAlign:"left",width:"100%",padding:"5px 8px",background:isOpen?"#dc262615":"transparent",border:"none",cursor:"pointer",fontSize:12,color:isOpen?"#dc2626":tx,fontFamily:F,fontWeight:isOpen?700:500,borderLeft:isOpen?"2px solid #dc2626":"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <span>{catLabel(c,lang)}</span>
+                          <span style={{fontSize:9,opacity:0.5}}>{(c.sub&&c.sub.hu?c.sub.hu.length:0)}</span>
                         </button>
-                      );
-                    })}
+                        {isOpen&&catSub(c,lang).map((s,si)=>{
+                          const huSubs=catSub(c,"hu");
+                          const huEquiv=huSubs[si];
+                          const isSel=cat===s||cat===huEquiv;
+                          return(
+                            <button key={s} onClick={()=>{const target=lang==="en"?(huEquiv||s):s;setCat(isSel?c.id:target);}} style={{textAlign:"left",width:"100%",padding:"4px 8px 4px 20px",background:"transparent",border:"none",cursor:"pointer",fontSize:11,color:isSel?"#dc2626":mu,fontFamily:F,fontWeight:isSel?700:400}}>
+                              {isSel?"• ":""}{s}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Vehicle/Make */}
+              <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
+                <div style={{fontSize:10,color:mu,fontWeight:700,letterSpacing:0.8,marginBottom:8,textTransform:"uppercase"}}>{lang==="en"?"Make":"Márka"}</div>
+                <select value={make} onChange={e=>setMake(e.target.value)} style={{width:"100%",padding:"7px 10px",border:`1px solid ${border}`,background:bg,color:tx,fontSize:12,fontFamily:F,outline:"none",boxSizing:"border-box"}}>
+                  <option value="all">{lang==="en"?"All makes":"Minden márka"}</option>
+                  {MAKES.map(m=><option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+
+              {/* Condition */}
+              <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
+                <div style={{fontSize:10,color:mu,fontWeight:700,letterSpacing:0.8,marginBottom:8,textTransform:"uppercase"}}>{lang==="en"?"Condition":"Állapot"}</div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12,cursor:"pointer",padding:"3px 0"}}>
+                    <input type="radio" name="cond" checked={cond==="all"} onChange={()=>setCond("all")} style={{accentColor:"#dc2626",margin:0}}/>
+                    <span style={{color:cond==="all"?"#dc2626":tx,fontWeight:cond==="all"?700:500}}>{lang==="en"?"Any":"Bármilyen"}</span>
+                  </label>
+                  {CONDITIONS.map(c=>(
+                    <label key={c} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,cursor:"pointer",padding:"3px 0"}}>
+                      <input type="radio" name="cond" checked={cond===c} onChange={()=>setCond(c)} style={{accentColor:"#dc2626",margin:0}}/>
+                      <span style={{width:8,height:8,background:COND_C2[c]||"#888",borderRadius:"50%",flexShrink:0}}/>
+                      <span style={{color:cond===c?"#dc2626":tx,fontWeight:cond===c?700:500}}>{lang==="en"?(condLabel[c]||c):c}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Position/Side - only shows positions that apply to current filtered scope */}
+              {(()=>{
+                // Compute items that match all filters EXCEPT position
+                const scoped=items.filter(i=>{
+                  if(!i||i.sold)return false;
+                  if(cond!=="all"&&i.condition!==cond)return false;
+                  if(cat!=="all"){
+                    const parentTree=PART_CAT_TREE.find(t=>t.id===cat);
+                    if(parentTree){
+                      const allSubs=[...(parentTree.sub.hu||[]),...(parentTree.sub.en||[])];
+                      if(!allSubs.includes(i.category||"")&&(i.category||"")!==parentTree.hu&&(i.category||"")!==parentTree.en)return false;
+                    }else{
+                      if((i.category||"")!==cat)return false;
+                    }
+                  }
+                  if(make!=="all"&&!(i.car||"").toLowerCase().includes(make.toLowerCase()))return false;
+                  if(priceMin&&parseInt(i.price||0)<parseInt(priceMin))return false;
+                  if(priceMax&&parseInt(i.price||0)>parseInt(priceMax))return false;
+                  if(withPhotos&&(!i.images||i.images.length===0))return false;
+                  if(withOEM&&!(i.serialNumber||"").trim())return false;
+                  if(search){
+                    const q=search.toLowerCase();
+                    if(![i.partName,i.car||"",i.serialNumber||"",i.description||"",i.category||""].join(" ").toLowerCase().includes(q))return false;
+                  }
+                  return true;
+                });
+                // Collect positions that exist in scoped items
+                const availPositions=new Set();
+                scoped.forEach(i=>{if(i.position)availPositions.add(i.position);});
+                // Categories where position matters - show filter even if sellers haven't set positions yet
+                // Keyword → relevant position codes mapping
+                // Each entry: matching keywords (hu+en), and which position codes make sense for that part type
+                const POS_RULES=[
+                  // Bumper: front or back only, no left/right
+                  {kw:["lökhárító","bumper"],positions:["F","B"]},
+                  // Hood/bonnet: only one, no position (but may have "upper" if split)
+                  {kw:["motorháztető","hood","bonnet","kapocs","zsanér","hinge"],positions:["F","B"]},
+                  // Trunk/tailgate: only rear
+                  {kw:["csomagtérajtó","trunk","tailgate","boot"],positions:["B"]},
+                  // Fender/mudguard: left or right, usually front
+                  {kw:["sárvédő","fender","mudguard","wing"],positions:["L","R","FL","FR","BL","BR"]},
+                  // Doors: all four
+                  {kw:["ajtó","door"],positions:["FL","FR","BL","BR","L","R"]},
+                  // Mirror: left or right only
+                  {kw:["tükör","mirror"],positions:["L","R"]},
+                  // Headlight/fog/DRL: left or right (front by definition)
+                  {kw:["fényszóró","ködlámpa","nappali fény","drl","headlight","fog light","foglight"],positions:["L","R"]},
+                  // Taillight: left or right rear
+                  {kw:["hátsó lámpa","tail light","taillight","rear lamp"],positions:["L","R"]},
+                  // Rocker/side skirt
+                  {kw:["küszöb","rocker","side skirt","sill"],positions:["L","R"]},
+                  // Brake caliper/disc/pad: FL FR BL BR
+                  {kw:["féknyereg","féktárcsa","fékbetét","caliper","brake disc","brake pad","rotor"],positions:["FL","FR","BL","BR"]},
+                  // Suspension: shock/strut/spring/arm — all four
+                  {kw:["lengéscsillapító","rugó","stabilizátor","lengőkar","gömbcsukló","shock","strut","spring","sway","control arm","ball joint"],positions:["FL","FR","BL","BR"]},
+                  // Wheel bearing/hub: all four
+                  {kw:["kerékcsapágy","kerékagy","bearing","hub","wheel bearing"],positions:["FL","FR","BL","BR"]},
+                  // CV axle/driveshaft: L R (usually front)
+                  {kw:["féltengely","hajtótengely","cv axle","driveshaft"],positions:["L","R"]},
+                  // Interior seat
+                  {kw:["ülés","seat"],positions:["FL","FR","BL","BR","B"]},
+                  // Window/glass
+                  {kw:["ablak","window","glass"],positions:["FL","FR","BL","BR","B","F"]},
+                  // Window regulator / ablakemelő
+                  {kw:["ablakemelő","window regulator","window motor"],positions:["FL","FR","BL","BR"]},
+                ];
+                // Find matching rule - look at subcategory, then part name
+                const catLower=(cat||"").toLowerCase();
+                const matchedRule=POS_RULES.find(r=>r.kw.some(k=>catLower.includes(k.toLowerCase())));
+                // Parent categories that imply positional parts (no specific rule matched)
+                const positionalParents=["Karosszéria","Vilagitas","BelsoTer","Felfüggesztés","Fékrendszer"];
+                const activeCatIsPositional=matchedRule||positionalParents.includes(catParent);
+                const relevantPositions=matchedRule?matchedRule.positions:["FL","FR","BL","BR","L","R","F","B"];
+                // Show filter if: (a) any items in scope have positions, OR (b) we're in a positional category
+                const anyHasPos=availPositions.size>0;
+                if(!anyHasPos&&!activeCatIsPositional)return null;
+                return(
+                  <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
+                    <div style={{fontSize:10,color:mu,fontWeight:700,letterSpacing:0.8,marginBottom:8,textTransform:"uppercase"}}>{lang==="en"?"Side / Position":"Oldal / Pozíció"}</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      <button onClick={()=>setPosition("all")} style={{padding:"4px 9px",fontSize:11,border:`1px solid ${position==="all"?"#dc2626":border}`,background:position==="all"?"#dc262615":"transparent",color:position==="all"?"#dc2626":tx,cursor:"pointer",fontFamily:F,fontWeight:position==="all"?700:500}}>
+                        {lang==="en"?"Any":"Bármelyik"}
+                      </button>
+                      {(()=>{
+                        // Show only positions relevant to the matched part type rule
+                        // If items have positions already, intersect with available; else show all relevant
+                        return POSITIONS.filter(p=>{
+                          if(p.id==="")return false;
+                          if(!relevantPositions.includes(p.id))return false;
+                          if(anyHasPos)return availPositions.has(p.id);
+                          return true;
+                        });
+                      })().map(p=>{
+                        const sel=position===p.id;
+                        const count=scoped.filter(i=>i.position===p.id).length;
+                        return(
+                          <button key={p.id} onClick={()=>setPosition(sel?"all":p.id)} style={{padding:"4px 9px",fontSize:11,border:`1px solid ${sel?"#dc2626":border}`,background:sel?"#dc262615":"transparent",color:sel?"#dc2626":tx,cursor:"pointer",fontFamily:F,fontWeight:sel?700:500,display:"inline-flex",alignItems:"center",gap:5}}>
+                            <span>{lang==="en"?p.en:p.hu}</span>
+                            <span style={{opacity:0.55,fontSize:9}}>{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  {/* Right: subcategories */}
-                  <div style={{flex:1,padding:"10px 12px",display:"flex",flexWrap:"wrap",gap:4,alignContent:"flex-start",minHeight:80}}>
-                    {cat==="all"?(
-                      <div style={{fontSize:12,color:mu,padding:"4px 0"}}>{lang==="en"?"Select a category":"V\u00e1lassz kateg\u00f3ri\u00e1t"}</div>
-                    ):(()=>{
-                      const tree=PART_CAT_TREE.find(t=>t.id===catParent);
-                      if(!tree)return null;
-                      return catSub(tree,lang).map((s,si)=>{
-                      const huSubs=catSub(tree,"hu");
-                      const enSubs=catSub(tree,"en");
-                      const huEquiv=huSubs[si];
-                      const isSel=cat===s||cat===huEquiv||(lang==="en"&&huEquiv===cat)||(lang==="hu"&&enSubs[si]===cat);
-                      return(
-                        <button key={s} onClick={()=>{const target=lang==="en"?(huEquiv||s):s;setCat(isSel?"all":target);}} style={{padding:"6px 12px",border:`1.5px solid ${isSel?"#dc2626":border}`,background:isSel?"#dc2626":"transparent",color:isSel?"#fff":isDark?"#ccc":"#444",fontSize:11,fontFamily:F,cursor:"pointer",fontWeight:isSel?700:400,transition:"all 0.1s"}}>{s}</button>
-                      );
-                    })})()}
+                );
+              })()}
 
-                  </div>{/* right panel */}
-                </div>{/* browser wrapper */}
-
-                {/* Apply row */}
-                <div style={{padding:"10px 14px",borderTop:`1px solid ${border}`,display:"flex",justifyContent:"flex-end",gap:8,background:isDark?"#0f0f14":"#f9f9fb"}}>
-                  <button onClick={()=>{setCat("all");setCatParent("all");}} style={{padding:"7px 14px",border:`1px solid ${border}`,background:"transparent",color:mu,fontSize:12,fontFamily:F,cursor:"pointer"}}>{lang==="en"?"Reset":"T\u00f6rl\u00e9s"}</button>
-                  <button onClick={()=>setCatOpen(false)} style={{padding:"7px 20px",border:"none",background:"#dc2626",color:"#fff",fontSize:12,fontFamily:F,cursor:"pointer",fontWeight:700}}>{lang==="en"?"Apply":"Alkalmaz"}</button>
+              {/* Price range */}
+              <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
+                <div style={{fontSize:10,color:mu,fontWeight:700,letterSpacing:0.8,marginBottom:8,textTransform:"uppercase"}}>{lang==="en"?"Price (Ft)":"Ár (Ft)"}</div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <input type="number" value={priceMin} onChange={e=>setPriceMin(e.target.value)} placeholder={lang==="en"?"Min":"Min"} style={{width:"50%",padding:"6px 8px",border:`1px solid ${border}`,background:bg,color:tx,fontSize:11,fontFamily:F,outline:"none",boxSizing:"border-box"}}/>
+                  <span style={{color:mu,fontSize:11}}>–</span>
+                  <input type="number" value={priceMax} onChange={e=>setPriceMax(e.target.value)} placeholder={lang==="en"?"Max":"Max"} style={{width:"50%",padding:"6px 8px",border:`1px solid ${border}`,background:bg,color:tx,fontSize:11,fontFamily:F,outline:"none",boxSizing:"border-box"}}/>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Search + condition + make */}
-          <div style={{display:"flex",alignItems:"stretch",height:44,border:`1px solid ${border}`}}>
-            <div style={{position:"relative",flex:"2 1 200px",borderRight:`1px solid ${border}`}}>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t.search||"Keres\u00e9s..."} style={{width:"100%",height:"100%",padding:"0 12px 0 30px",border:"none",background:surf,color:tx,fontSize:13,fontFamily:F,outline:"none"}}/>
-              <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:13,color:mu,pointerEvents:"none"}}>&#8981;</span>
-              {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:mu,cursor:"pointer",fontSize:12,fontFamily:F,padding:0}}>&#x2715;</button>}
-            </div>
-            <select value={cond} onChange={e=>setCond(e.target.value)} style={{flex:"1 1 120px",padding:"0 10px",border:"none",borderRight:`1px solid ${border}`,background:cond!=="all"?"#dc262606":surf,color:cond!=="all"?"#dc2626":isDark?"#bbb":"#333",fontSize:12,fontFamily:F,fontWeight:600,cursor:"pointer",outline:"none"}}>
-              <option value="all">{t.allCond||"Minden \u00e1llapot"}</option>
-              {CONDITIONS.map(c=><option key={c} value={c}>{lang==="en"?(condLabel[c]||c):c}</option>)}
-            </select>
-            <select value={make} onChange={e=>setMake(e.target.value)} style={{flex:"1 1 130px",padding:"0 10px",border:"none",borderRight:activeFilters>0?`1px solid ${border}`:"none",background:make!=="all"?"#dc262606":surf,color:make!=="all"?"#dc2626":isDark?"#bbb":"#333",fontSize:12,fontFamily:F,fontWeight:600,cursor:"pointer",outline:"none"}}>
-              <option value="all">{t.allMakes||"Minden m\u00e1rka"}</option>
-              {MAKES.map(m=><option key={m} value={m}>{m}</option>)}
-            </select>
-            {(activeFilters>0||search)&&<button onClick={()=>{setCond("all");setCat("all");setCatParent("all");setMake("all");setSearch("");setCatOpen(false);}} style={{flexShrink:0,padding:"0 14px",border:"none",background:"transparent",color:"#dc2626",fontSize:11,fontFamily:F,cursor:"pointer",fontWeight:700}}>{lang==="en"?"Clear":"T\u00f6rl\u00e9s"}</button>}
+              {/* Has photos */}
+              <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:12}}>
+                  <input type="checkbox" checked={withPhotos} onChange={e=>setWithPhotos(e.target.checked)} style={{accentColor:"#dc2626",margin:0,cursor:"pointer"}}/>
+                  <span style={{color:withPhotos?"#dc2626":tx,fontWeight:withPhotos?700:500}}>{lang==="en"?"With photos only":"Csak képes hirdetések"}</span>
+                </label>
+              </div>
+
+              {/* Has OEM number */}
+              <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:12}}>
+                  <input type="checkbox" checked={withOEM} onChange={e=>setWithOEM(e.target.checked)} style={{accentColor:"#dc2626",margin:0,cursor:"pointer"}}/>
+                  <span style={{color:withOEM?"#dc2626":tx,fontWeight:withOEM?700:500}}>{lang==="en"?"With OEM number":"OEM számmal"}</span>
+                </label>
+              </div>
+            </aside>
+
+            {/* ============ RIGHT: RESULTS AREA ============ */}
+            <section>
+              
+              {/* Toolbar: results count + sort + view toggle */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:card,border:`1px solid ${border}`,marginBottom:10,flexWrap:"wrap",gap:10}}>
+                <div style={{fontSize:13,color:tx}}>
+                  <strong style={{fontSize:15,fontWeight:800}}>{shown.length}</strong>
+                  <span style={{color:mu,marginLeft:6}}>{lang==="en"?(shown.length===1?"result":"results"):"találat"}</span>
+                  {(activeFilters>0||search)&&(
+                    <span style={{color:mu,marginLeft:10,fontSize:12}}>
+                      {search&&<span style={{padding:"2px 8px",background:"#dc262615",color:"#dc2626",marginRight:6,borderRadius:2}}>"{search}"</span>}
+                      {cat!=="all"&&<span style={{padding:"2px 8px",background:"#dc262615",color:"#dc2626",marginRight:6,borderRadius:2}}>{cat}</span>}
+                      {make!=="all"&&<span style={{padding:"2px 8px",background:"#dc262615",color:"#dc2626",marginRight:6,borderRadius:2}}>{make}</span>}
+                      {cond!=="all"&&<span style={{padding:"2px 8px",background:"#dc262615",color:"#dc2626",marginRight:6,borderRadius:2}}>{lang==="en"?(condLabel[cond]||cond):cond}</span>}
+                      {position!=="all"&&<span style={{padding:"2px 8px",background:"#dc262615",color:"#dc2626",marginRight:6,borderRadius:2}}>{positionLabel(position,lang)}</span>}
+                    </span>
+                  )}
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <label style={{fontSize:11,color:mu,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5}}>{lang==="en"?"Sort:":"Rendezés:"}</label>
+                  <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"6px 10px",border:`1px solid ${border}`,background:bg,color:tx,fontSize:12,fontFamily:F,outline:"none",cursor:"pointer"}}>
+                    <option value="newest">{lang==="en"?"Newest first":"Legújabb elöl"}</option>
+                    <option value="priceAsc">{lang==="en"?"Price: low to high":"Ár: olcsótól"}</option>
+                    <option value="priceDesc">{lang==="en"?"Price: high to low":"Ár: drágától"}</option>
+                    <option value="nameAZ">{lang==="en"?"Name A-Z":"Név A-Z"}</option>
+                  </select>
+                  <div style={{display:"flex",border:`1px solid ${border}`,overflow:"hidden"}}>
+                    <button onClick={()=>setViewMode("list")} title="List view" style={{padding:"6px 8px",background:viewMode==="list"?"#dc2626":"transparent",color:viewMode==="list"?"#fff":mu,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    </button>
+                    <button onClick={()=>setViewMode("grid")} title="Grid view" style={{padding:"6px 8px",background:viewMode==="grid"?"#dc2626":"transparent",color:viewMode==="grid"?"#fff":mu,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Loading */}
+              {ld&&(
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:80,color:mu,background:card,border:`1px solid ${border}`}}>
+                  <div style={{width:32,height:32,border:`3px solid ${border}`,borderTopColor:"#dc2626",borderRadius:"50%",animation:"spin 0.8s linear infinite",marginBottom:16}}/>
+                  <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+                  <div style={{fontSize:13}}>{lang==="en"?"Loading parts...":"Alkatrészek betöltése..."}</div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!ld&&shown.length===0&&(
+                <div style={{textAlign:"center",padding:"80px 20px",background:card,border:`1px solid ${border}`,color:mu}}>
+                  <div style={{fontSize:15,fontWeight:700,color:tx,marginBottom:8}}>{lang==="en"?"No parts found":"Nincs találat"}</div>
+                  <div style={{fontSize:12,color:mu,marginBottom:20}}>{lang==="en"?"Try adjusting your filters or search terms":"Próbáld módosítani a szűrőket vagy keresési kifejezést"}</div>
+                  <button onClick={()=>{setCond("all");setCat("all");setCatParent("all");setMake("all");setPosition("all");setPriceMin("");setPriceMax("");setWithPhotos(false);setWithOEM(false);setSearch("");}} style={{padding:"9px 20px",background:"#dc2626",color:"#fff",border:"none",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:F,letterSpacing:0.3}}>{lang==="en"?"Reset filters":"Szűrők törlése"}</button>
+                </div>
+              )}
+
+              {/* LIST VIEW (Allegro rows) */}
+              {!ld&&shown.length>0&&viewMode==="list"&&(
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {shown.map(item=>(
+                    <article key={item.id} onClick={()=>{setSel(item);setImgIdx(0);window.scrollTo({top:0,behavior:"smooth"});}} style={{background:card,border:`1px solid ${border}`,cursor:"pointer",display:"flex",gap:14,padding:12,transition:"border-color 0.15s,box-shadow 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#dc262688";e.currentTarget.style.boxShadow=isDark?"0 2px 12px rgba(0,0,0,0.3)":"0 2px 12px rgba(0,0,0,0.05)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=border;e.currentTarget.style.boxShadow="";}}>
+                      {/* Thumb */}
+                      <div style={{width:140,height:140,flexShrink:0,background:isDark?"#1a1a22":"#f5f5f8",position:"relative",overflow:"hidden",border:`1px solid ${border}`}}>
+                        {(item.images&&item.images[0])?(
+                          <img src={item.images[0]} alt={item.partName} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                        ):(
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",fontSize:36,opacity:0.15,color:mu}}>&#9881;</div>
+                        )}
+                        {((item.images&&item.images.length)||0)>1&&(
+                          <div style={{position:"absolute",bottom:6,right:6,background:"rgba(0,0,0,0.8)",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 6px"}}>{item.images.length}</div>
+                        )}
+                      </div>
+                      {/* Middle: details */}
+                      <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column"}}>
+                        <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+                          <span style={{background:COND_C2[item.condition]||"#888",color:"#fff",padding:"2px 8px",fontSize:10,fontWeight:800,letterSpacing:0.3}}>{lang==="en"?(condLabel[item.condition]||item.condition):item.condition}</span>
+                          {item.category&&<span style={{fontSize:10,color:mu,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5}}>{item.category}</span>}
+                          {item.position&&<span style={{fontSize:10,fontWeight:700,letterSpacing:0.3,padding:"1px 6px",border:`1px solid ${border}`,color:tx}}>{positionLabel(item.position,lang)}</span>}
+                        </div>
+                        <h3 style={{fontSize:16,fontWeight:700,color:tx,lineHeight:1.3,margin:"0 0 6px"}}>{item.partName}</h3>
+                        {item.car&&<div style={{fontSize:12,color:isDark?"#bbb":"#555",marginBottom:4}}>{item.car}</div>}
+                        {item.serialNumber&&<div style={{fontSize:10,color:mu,fontFamily:"monospace",marginBottom:6}}>OEM: {item.serialNumber}</div>}
+                        {item.description&&<div style={{fontSize:12,color:mu,lineHeight:1.4,marginTop:"auto",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{item.description}</div>}
+                      </div>
+                      {/* Right: price */}
+                      <div style={{minWidth:140,display:"flex",flexDirection:"column",alignItems:"flex-end",justifyContent:"space-between",flexShrink:0,borderLeft:`1px solid ${border}`,paddingLeft:14}}>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontSize:20,fontWeight:900,color:"#dc2626",letterSpacing:-0.5,lineHeight:1}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
+                          {item.price&&eurRate>0&&<div style={{fontSize:11,color:mu,marginTop:3}}>≈ {(parseInt(item.price||0)*eurRate).toLocaleString("hu",{maximumFractionDigits:0})} €</div>}
+                          {item.pickup&&<div style={{fontSize:10,color:mu,marginTop:6}}>{item.pickup}</div>}
+                        </div>
+                        <div style={{fontSize:10,color:"#dc2626",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="en"?"View ›":"Részletek ›"}</div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              {/* GRID VIEW (compact cards) */}
+              {!ld&&shown.length>0&&viewMode==="grid"&&(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+                  {shown.map(item=>(
+                    <article key={item.id} onClick={()=>{setSel(item);setImgIdx(0);window.scrollTo({top:0,behavior:"smooth"});}} style={{background:card,border:`1px solid ${border}`,cursor:"pointer",overflow:"hidden",transition:"border-color 0.15s,transform 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#dc262688";e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=border;e.currentTarget.style.transform="";}}>
+                      <div style={{aspectRatio:"1/1",background:isDark?"#1a1a22":"#f5f5f8",position:"relative",overflow:"hidden"}}>
+                        {(item.images&&item.images[0])?(
+                          <img src={item.images[0]} alt={item.partName} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                        ):(
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",fontSize:40,opacity:0.15,color:mu}}>&#9881;</div>
+                        )}
+                        <span style={{position:"absolute",top:8,left:8,background:COND_C2[item.condition]||"#888",color:"#fff",padding:"2px 6px",fontSize:9,fontWeight:800,letterSpacing:0.3}}>{lang==="en"?(condLabel[item.condition]||item.condition):item.condition}</span>
+                      </div>
+                      <div style={{padding:10}}>
+                        <div style={{fontSize:13,fontWeight:700,color:tx,lineHeight:1.3,marginBottom:4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",minHeight:33}}>{item.partName}</div>
+                        {item.car&&<div style={{fontSize:11,color:mu,marginBottom:6,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.car}</div>}
+                        <div style={{fontSize:17,fontWeight:900,color:"#dc2626",letterSpacing:-0.5}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
+                        {item.price&&eurRate>0&&<div style={{fontSize:10,color:mu}}>≈ {(parseInt(item.price||0)*eurRate).toLocaleString("hu",{maximumFractionDigits:0})} €</div>}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+
           </div>
+        )}
 
-          {/* Status bar */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"5px 12px",background:isDark?"#0d0d12":"#f5f5f8",border:`1px solid ${border}`,borderTop:0}}>
-            <span style={{fontSize:10,color:mu,fontWeight:500,letterSpacing:0.3}}>{shown.length} {lang==="en"?"RESULTS":"TAL\u00c1LAT"}</span>
-            {activeFilters>0&&<span style={{fontSize:10,color:"#dc2626",fontWeight:700,letterSpacing:0.3}}>{activeFilters} {lang==="en"?"FILTER":"SZ\u0170R\u0150"}</span>}
-          </div>
-        </div>
-
-        {/* -- Loading -- */}
-        {ld&&(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:80,color:mu}}><div style={{width:36,height:36,border:`3px solid ${border}`,borderTopColor:"#dc2626",borderRadius:"50%",animation:"spin 0.8s linear infinite",marginBottom:16}}/><style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style><div style={{fontSize:14}}>{t.loading}</div></div>)}
-
-        {/* -- Empty state -- */}
-        {!ld&&shown.length===0&&!sel&&(<div style={{textAlign:"center",padding:"80px 20px",color:mu}}><div style={{fontSize:13,fontWeight:600,color:isDark?"#555":"#aaa",letterSpacing:0.5,marginBottom:8}}>{t.noResults}</div>{activeFilters>0&&<button onClick={()=>{setCond("all");setCat("all");setCatParent("all");setMake("all");setSearch("");}} style={{marginTop:10,background:"transparent",color:mu,border:`1px solid ${border}`,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:F}}>{t.clearFilters}</button>}</div>)}
-
-        {/* -- Row list (Allegro style) -- */}
-        {!ld&&shown.length>0&&!sel&&(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {shown.map(item=>(
-            <div key={item.id} onClick={()=>{setSel(item);setImgIdx(0);window.scrollTo({top:0,behavior:"smooth"});}} style={{background:card,border:`1px solid ${border}`,cursor:"pointer",display:"flex",gap:16,padding:16,transition:"border-color 0.15s,box-shadow 0.15s,transform 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#dc262688";e.currentTarget.style.boxShadow=isDark?"0 4px 16px rgba(0,0,0,0.35)":"0 4px 16px rgba(0,0,0,0.06)";e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=border;e.currentTarget.style.boxShadow="";e.currentTarget.style.transform="";}}>
-              {/* Thumbnail */}
-              <div style={{width:160,height:160,flexShrink:0,background:isDark?"#1a1a22":"#f0f0f5",position:"relative",overflow:"hidden",borderRadius:6}}>
-                {(item.images&&item.images[0])?<img src={item.images[0]} alt={item.partName} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",fontSize:42,opacity:0.15,color:mu}}>&#9881;</div>}
-                {((item.images&&item.images.length)||0)>1&&<div style={{position:"absolute",bottom:6,right:6,background:"rgba(0,0,0,0.7)",color:"#fff",borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:700}}>{item.images.length}</div>}
-              </div>
-              {/* Middle: title, specs */}
-              <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column"}}>
-                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
-                  <span style={{background:COND_C2[item.condition]||"#888",color:"#fff",borderRadius:4,padding:"2px 8px",fontSize:10,fontWeight:800,letterSpacing:0.3}}>{lang==="en"?(condLabel[item.condition]||item.condition):item.condition}</span>
-                  {item.category&&<span style={{fontSize:10,color:mu,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5}}>{item.category}</span>}
-                </div>
-                <div style={{fontSize:17,fontWeight:700,color:tx,marginBottom:6,lineHeight:1.3}}>{item.partName}</div>
-                {item.car&&<div style={{fontSize:13,color:isDark?"#bbb":"#555",marginBottom:4}}>{item.car}</div>}
-                {item.serialNumber&&<div style={{fontSize:11,color:mu,fontFamily:"monospace",marginBottom:6}}>OEM: {item.serialNumber}</div>}
-                {item.description&&<div style={{fontSize:12,color:mu,lineHeight:1.5,marginTop:"auto",overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{item.description}</div>}
-              </div>
-              {/* Right: price + actions */}
-              <div style={{minWidth:160,display:"flex",flexDirection:"column",alignItems:"flex-end",justifyContent:"space-between",flexShrink:0,borderLeft:`1px solid ${border}`,paddingLeft:16}}>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:22,fontWeight:900,color:"#dc2626",letterSpacing:-0.5,lineHeight:1}}>{item.price?parseInt(item.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
-                  {item.pickup&&<div style={{fontSize:11,color:mu,marginTop:4}}>{item.pickup}</div>}
-                </div>
-                <div style={{fontSize:11,color:"#dc2626",fontWeight:600,letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="en"?"View \u203a":"R\u00e9szletek \u203a"}</div>
-              </div>
-            </div>
-          ))}
-        </div>)}
-
-        {/* -- Detail view (Allegro-style inline product page) -- */}
+        {/* -- Detail view (Allegro-style product page) -- */}
         {sel&&(
-          <div style={{background:card,border:`1px solid ${border}`,padding:24,marginBottom:24}}>
-            {/* Back breadcrumb + share row */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
-              <button onClick={()=>setSel(null)} style={{background:"transparent",border:"none",color:mu,fontSize:12,cursor:"pointer",fontFamily:F,padding:0,display:"flex",alignItems:"center",gap:4}}>
-                {"\u2039 "}{lang==="en"?"Back to list":"Vissza a list\u00e1hoz"}
-              </button>
-              <button onClick={()=>{navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),1800);}} style={{background:"transparent",border:`1px solid ${border}`,color:copied?"#16a34a":mu,fontSize:11,cursor:"pointer",fontFamily:F,padding:"5px 10px",fontWeight:600,letterSpacing:0.3}}>
-                {copied?(lang==="en"?"Copied":"M\u00e1solva"):(lang==="en"?"Copy link":"Link m\u00e1sol\u00e1sa")}
+          <div>
+            {/* Breadcrumb + copy link bar */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:card,border:`1px solid ${border}`,marginBottom:12,flexWrap:"wrap",gap:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:mu,flexWrap:"wrap"}}>
+                <button onClick={()=>setSel(null)} style={{background:"transparent",border:"none",color:"#dc2626",fontSize:12,cursor:"pointer",fontFamily:F,padding:0,fontWeight:600}}>
+                  {lang==="en"?"\u2039 All parts":"\u2039 Minden alkatrész"}
+                </button>
+                {sel.category&&<>
+                  <span style={{color:mu,opacity:0.5}}>/</span>
+                  <span>{sel.category}</span>
+                </>}
+                {sel.car&&<>
+                  <span style={{color:mu,opacity:0.5}}>/</span>
+                  <span>{sel.car}</span>
+                </>}
+              </div>
+              <button onClick={()=>{navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),1800);}} style={{background:"transparent",border:`1px solid ${border}`,color:copied?"#16a34a":mu,fontSize:11,cursor:"pointer",fontFamily:F,padding:"5px 11px",fontWeight:600,letterSpacing:0.3,display:"flex",alignItems:"center",gap:5}}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                {copied?(lang==="en"?"Copied!":"Másolva!"):(lang==="en"?"Copy link":"Link másolása")}
               </button>
             </div>
 
-            {/* Main row: images left, price/contact right */}
-            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 320px",gap:28,marginBottom:24,alignItems:"start"}}>
-              {/* Image gallery */}
-              <div>
-                <div style={{position:"relative",background:isDark?"#1a1a22":"#f5f5f8",border:`1px solid ${border}`,overflow:"hidden",aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            {/* Main product area: images | title+price sidebar */}
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.15fr) 360px",gap:14,marginBottom:14,alignItems:"start"}}>
+
+              {/* LEFT: Image gallery */}
+              <div style={{background:card,border:`1px solid ${border}`,padding:14}}>
+                <div style={{position:"relative",background:isDark?"#0f0f14":"#f8f8fb",aspectRatio:"4/3",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",marginBottom:10}}>
                   {((sel.images&&sel.images.length)||0)>0?(
-                    <img key={sel.id+"-"+imgIdx} src={sel.images[imgIdx]} alt={sel.partName} style={{maxWidth:"100%",maxHeight:"100%",width:"auto",height:"auto",objectFit:"contain",display:"block"}}/>
+                    <img key={sel.id+"-"+imgIdx} src={sel.images[imgIdx]} alt={sel.partName} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}}/>
                   ):(
-                    <div style={{fontSize:72,opacity:0.12,color:mu}}>&#9881;</div>
+                    <div style={{fontSize:88,opacity:0.08,color:mu}}>&#9881;</div>
                   )}
                   {sel.images&&sel.images.length>1&&(
                     <>
-                      <button onClick={()=>setImgIdx(i=>(i-1+sel.images.length)%sel.images.length)} style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.95)",border:"none",borderRadius:2,width:36,height:52,cursor:"pointer",fontSize:20,fontFamily:F,color:"#111",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(0,0,0,0.15)"}}>&#8249;</button>
-                      <button onClick={()=>setImgIdx(i=>(i+1)%sel.images.length)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.95)",border:"none",borderRadius:2,width:36,height:52,cursor:"pointer",fontSize:20,fontFamily:F,color:"#111",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(0,0,0,0.15)"}}>&#8250;</button>
-                      <div style={{position:"absolute",bottom:10,left:10,background:"rgba(0,0,0,0.7)",color:"#fff",padding:"3px 8px",fontSize:11,fontWeight:600,letterSpacing:0.3}}>{imgIdx+1} / {sel.images.length}</div>
+                      <button onClick={()=>setImgIdx(i=>(i-1+sel.images.length)%sel.images.length)} aria-label="Previous" style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.97)",border:`1px solid rgba(0,0,0,0.08)`,width:40,height:40,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#111",boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15,18 9,12 15,6"/></svg>
+                      </button>
+                      <button onClick={()=>setImgIdx(i=>(i+1)%sel.images.length)} aria-label="Next" style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.97)",border:`1px solid rgba(0,0,0,0.08)`,width:40,height:40,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#111",boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9,18 15,12 9,6"/></svg>
+                      </button>
+                      <div style={{position:"absolute",bottom:12,right:12,background:"rgba(0,0,0,0.75)",color:"#fff",padding:"4px 10px",fontSize:11,fontWeight:700,letterSpacing:0.3}}>{imgIdx+1} / {sel.images.length}</div>
                     </>
                   )}
                 </div>
-                {/* Thumbnails */}
+                {/* Thumbnail strip */}
                 {sel.images&&sel.images.length>1&&(
-                  <div style={{display:"flex",gap:6,marginTop:10,overflowX:"auto",paddingBottom:4}}>
+                  <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2}}>
                     {sel.images.map((src,i)=>(
-                      <button key={i} onClick={()=>setImgIdx(i)} style={{width:68,height:68,padding:0,border:`2px solid ${i===imgIdx?"#dc2626":border}`,overflow:"hidden",cursor:"pointer",background:"transparent",flexShrink:0,transition:"border-color 0.15s"}}>
-                        <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={e=>{e.currentTarget.src="";}}/>
+                      <button key={i} onClick={()=>setImgIdx(i)} style={{width:76,height:76,padding:0,border:`2px solid ${i===imgIdx?"#dc2626":"transparent"}`,outline:i!==imgIdx?`1px solid ${border}`:"none",cursor:"pointer",background:isDark?"#0f0f14":"#f8f8fb",flexShrink:0,transition:"border-color 0.12s"}}>
+                        <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Right column: title, price, contact */}
-              <div style={{display:"flex",flexDirection:"column",gap:14}}>
-                {/* Title + condition */}
-                <div>
-                  {sel.category&&<div style={{fontSize:10,color:mu,marginBottom:8,letterSpacing:1,textTransform:"uppercase",fontWeight:700}}>{sel.category}</div>}
-                  <h1 style={{fontSize:20,fontWeight:800,color:tx,lineHeight:1.3,margin:"0 0 10px"}}>{sel.partName}</h1>
-                  <span style={{background:COND_C2[sel.condition]||"#888",color:"#fff",padding:"3px 9px",fontSize:10,fontWeight:800,letterSpacing:0.5}}>{lang==="en"?(condLabel[sel.condition]||sel.condition):sel.condition}</span>
+              {/* RIGHT: Title, price, contact */}
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+
+                {/* Title block */}
+                <div style={{background:card,border:`1px solid ${border}`,padding:16}}>
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
+                    <span style={{background:COND_C2[sel.condition]||"#888",color:"#fff",padding:"3px 10px",fontSize:10,fontWeight:800,letterSpacing:0.5,textTransform:"uppercase"}}>{lang==="en"?(condLabel[sel.condition]||sel.condition):sel.condition}</span>
+                    {sel.position&&<span style={{border:`1px solid ${border}`,padding:"2px 8px",fontSize:10,fontWeight:700,color:tx,letterSpacing:0.3}}>{positionLabel(sel.position,lang)}</span>}
+                    {sel.category&&<span style={{fontSize:10,color:mu,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5}}>{sel.category}</span>}
+                  </div>
+                  <h1 style={{fontSize:22,fontWeight:800,color:tx,lineHeight:1.25,margin:"0 0 8px"}}>{sel.partName}</h1>
+                  {sel.car&&<div style={{fontSize:14,color:isDark?"#bbb":"#555",fontWeight:500,marginBottom:4}}>{sel.car}</div>}
+                  {sel.serialNumber&&<div style={{fontSize:11,color:mu,fontFamily:"monospace"}}>OEM: {sel.serialNumber}</div>}
                 </div>
 
-                {/* Price */}
-                <div style={{background:isDark?"#0f0f14":"#fafafc",border:`1px solid ${border}`,padding:18}}>
-                  <div style={{fontSize:30,fontWeight:900,color:"#dc2626",letterSpacing:-1,lineHeight:1}}>{sel.price?parseInt(sel.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
+                {/* Price block */}
+                <div style={{background:card,border:`1px solid ${border}`,padding:20}}>
+                  <div style={{fontSize:36,fontWeight:900,color:"#dc2626",letterSpacing:-1.2,lineHeight:1}}>{sel.price?parseInt(sel.price||0).toLocaleString("hu")+" Ft":t.askPrice}</div>
                   {sel.price&&eurRate>0&&(
-                    <div style={{fontSize:13,color:mu,marginTop:6,fontWeight:500}}>≈ {(parseInt(sel.price||0)*eurRate).toLocaleString("hu",{maximumFractionDigits:0})} €</div>
+                    <div style={{fontSize:14,color:mu,marginTop:6,fontWeight:500}}>≈ {(parseInt(sel.price||0)*eurRate).toLocaleString("hu",{maximumFractionDigits:0})} €</div>
+                  )}
+                  {sel.pickup&&(
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginTop:14,paddingTop:14,borderTop:`1px solid ${border}`,fontSize:12,color:mu}}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      <span>{lang==="en"?"Pickup: ":"Átvétel: "}<strong style={{color:tx}}>{sel.pickup}</strong></span>
+                    </div>
                   )}
                 </div>
 
-                {/* Contact buttons - sharp corners, red primary, WhatsApp secondary */}
+                {/* Contact buttons */}
                 {sel.contact&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    <a href={"tel:"+sel.contact} style={{background:"#dc2626",color:"#fff",padding:"13px 16px",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"block",letterSpacing:0.5}}>{t.call||(lang==="en"?"Call now":"H\u00edv\u00e1s most")}</a>
-                    <a href={"https://wa.me/"+(sel.contact||"").replace(/\D/g,"")} target="_blank" rel="noreferrer" style={{background:"transparent",color:"#dc2626",padding:"10px 16px",fontSize:12,fontWeight:700,textDecoration:"none",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:6,border:`1px solid ${isDark?"#333":"#ddd"}`,letterSpacing:0.3}}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#dc2626"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                  <div style={{background:card,border:`1px solid ${border}`,padding:14,display:"flex",flexDirection:"column",gap:8}}>
+                    <a href={"tel:"+sel.contact} style={{background:"#dc2626",color:"#fff",padding:"14px 16px",fontSize:14,fontWeight:800,textDecoration:"none",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:0.4}}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                      {t.call||(lang==="en"?"Call now":"Hívás most")}
+                    </a>
+                    <a href={"https://wa.me/"+(sel.contact||"").replace(/\D/g,"")} target="_blank" rel="noreferrer" style={{background:"transparent",color:tx,padding:"11px 16px",fontSize:13,fontWeight:700,textDecoration:"none",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:8,border:`1px solid ${border}`,letterSpacing:0.3}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#dc2626"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                       WhatsApp
                     </a>
-                    <div style={{fontSize:11,color:mu,textAlign:"center",marginTop:2}}>{sel.contact}</div>
+                    <div style={{fontSize:11,color:mu,textAlign:"center",marginTop:3,fontFamily:"monospace"}}>{sel.contact}</div>
                   </div>
                 )}
 
-                {sel.pickup&&<div style={{fontSize:12,color:mu,padding:"10px 14px",background:isDark?"#0f0f14":"#fafafc",border:`1px solid ${border}`}}>{lang==="en"?"Pickup: ":"\u00c1tv\u00e9tel: "}<strong style={{color:tx}}>{sel.pickup}</strong></div>}
+                {/* Trust signals (Allegro-style) */}
+                <div style={{background:card,border:`1px solid ${border}`,padding:14,display:"flex",flexDirection:"column",gap:10}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:10,fontSize:12}}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,marginTop:1}}><polyline points="20 6 9 17 4 12"/></svg>
+                    <div><strong style={{color:tx}}>{lang==="en"?"Verified part":"Ellenőrzött alkatrész"}</strong><div style={{color:mu,marginTop:2}}>{lang==="en"?"Inspected before listing":"Ellenőrizve feltöltés előtt"}</div></div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:10,fontSize:12}}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,marginTop:1}}><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                    <div><strong style={{color:tx}}>{lang==="en"?"Fast dispatch":"Gyors kiszállítás"}</strong><div style={{color:mu,marginTop:2}}>{lang==="en"?"Same-day for in-stock items":"Készletről aznap"}</div></div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:10,fontSize:12}}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,marginTop:1}}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <div><strong style={{color:tx}}>{lang==="en"?"Direct from seller":"Közvetlen eladótól"}</strong><div style={{color:mu,marginTop:2}}>{lang==="en"?"No middleman markup":"Nincs közvetítői díj"}</div></div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Bottom: description + specs table */}
-            <div style={{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,1fr)",gap:28,borderTop:`1px solid ${border}`,paddingTop:24}}>
+            {/* Description + Specs side by side */}
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.15fr) 360px",gap:14,marginBottom:14}}>
               {/* Description */}
-              <div>
-                <h3 style={{fontSize:13,fontWeight:800,color:tx,marginTop:0,marginBottom:14,textTransform:"uppercase",letterSpacing:0.8}}>{lang==="en"?"Description":"Le\u00edr\u00e1s"}</h3>
+              <div style={{background:card,border:`1px solid ${border}`,padding:18}}>
+                <h3 style={{fontSize:13,fontWeight:800,color:tx,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:0.8,paddingBottom:10,borderBottom:`1px solid ${border}`}}>{lang==="en"?"Description":"Leírás"}</h3>
                 {sel.description?(
                   <p style={{fontSize:14,color:isDark?"#c8c8d8":"#333",lineHeight:1.7,margin:0,whiteSpace:"pre-wrap"}}>{sel.description}</p>
                 ):(
-                  <p style={{fontSize:13,color:mu,margin:0,fontStyle:"italic"}}>{lang==="en"?"No description provided.":"Nincs le\u00edr\u00e1s megadva."}</p>
+                  <p style={{fontSize:13,color:mu,margin:0,fontStyle:"italic"}}>{lang==="en"?"No description provided.":"Nincs leírás."}</p>
                 )}
               </div>
-              {/* Specs table */}
-              <div>
-                <h3 style={{fontSize:13,fontWeight:800,color:tx,marginTop:0,marginBottom:14,textTransform:"uppercase",letterSpacing:0.8}}>{lang==="en"?"Specifications":"Adatok"}</h3>
+              {/* Specs */}
+              <div style={{background:card,border:`1px solid ${border}`,padding:18}}>
+                <h3 style={{fontSize:13,fontWeight:800,color:tx,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:0.8,paddingBottom:10,borderBottom:`1px solid ${border}`}}>{lang==="en"?"Specifications":"Paraméterek"}</h3>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
                   <tbody>
-                    {sel.car&&<tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"9px 0",color:mu,width:"45%"}}>{lang==="en"?"Vehicle":"J\u00e1rm\u0171"}</td><td style={{padding:"9px 0",color:tx,fontWeight:600,textAlign:"right"}}>{sel.car}</td></tr>}
-                    {sel.serialNumber&&<tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"9px 0",color:mu}}>OEM</td><td style={{padding:"9px 0",color:tx,fontWeight:600,fontFamily:"monospace",fontSize:12,textAlign:"right"}}>{sel.serialNumber}</td></tr>}
-                    {sel.category&&<tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"9px 0",color:mu}}>{lang==="en"?"Category":"Kateg\u00f3ria"}</td><td style={{padding:"9px 0",color:tx,fontWeight:600,textAlign:"right"}}>{sel.category}</td></tr>}
-                    <tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"9px 0",color:mu}}>{lang==="en"?"Condition":"\u00c1llapot"}</td><td style={{padding:"9px 0",color:tx,fontWeight:600,textAlign:"right"}}>{lang==="en"?(condLabel[sel.condition]||sel.condition):sel.condition}</td></tr>
-                    {sel.pickup&&<tr><td style={{padding:"9px 0",color:mu}}>{lang==="en"?"Pickup":"\u00c1tv\u00e9tel"}</td><td style={{padding:"9px 0",color:tx,fontWeight:600,textAlign:"right"}}>{sel.pickup}</td></tr>}
+                    {sel.car&&<tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"8px 0",color:mu,width:"45%"}}>{lang==="en"?"Vehicle":"Jármű"}</td><td style={{padding:"8px 0",color:tx,fontWeight:600,textAlign:"right"}}>{sel.car}</td></tr>}
+                    {sel.serialNumber&&<tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"8px 0",color:mu}}>OEM</td><td style={{padding:"8px 0",color:tx,fontWeight:600,fontFamily:"monospace",fontSize:12,textAlign:"right"}}>{sel.serialNumber}</td></tr>}
+                    {sel.position&&<tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"8px 0",color:mu}}>{lang==="en"?"Side":"Oldal"}</td><td style={{padding:"8px 0",color:tx,fontWeight:600,textAlign:"right"}}>{positionLabel(sel.position,lang)}</td></tr>}
+                    {sel.category&&<tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"8px 0",color:mu}}>{lang==="en"?"Category":"Kategória"}</td><td style={{padding:"8px 0",color:tx,fontWeight:600,textAlign:"right"}}>{sel.category}</td></tr>}
+                    <tr style={{borderBottom:`1px solid ${border}`}}><td style={{padding:"8px 0",color:mu}}>{lang==="en"?"Condition":"Állapot"}</td><td style={{padding:"8px 0",color:tx,fontWeight:600,textAlign:"right"}}>{lang==="en"?(condLabel[sel.condition]||sel.condition):sel.condition}</td></tr>
+                    {sel.pickup&&<tr><td style={{padding:"8px 0",color:mu}}>{lang==="en"?"Pickup":"Átvétel"}</td><td style={{padding:"8px 0",color:tx,fontWeight:600,textAlign:"right"}}>{sel.pickup}</td></tr>}
                   </tbody>
                 </table>
               </div>
             </div>
-          
-            {/* Recommended for you */}
+
+            {/* Recommended */}
             {(()=>{
-              const recs=items.filter(x=>x.id!==sel.id&&(x.category===sel.category||x.car===sel.car)).slice(0,4);
+              const recs=items.filter(x=>x.id!==sel.id&&!x.sold&&(x.category===sel.category||x.car===sel.car)).slice(0,4);
               if(recs.length===0)return null;
               return(
-                <div style={{borderTop:`1px solid ${border}`,marginTop:24,paddingTop:24}}>
-                  <h3 style={{fontSize:13,fontWeight:800,color:tx,margin:"0 0 16px",textTransform:"uppercase",letterSpacing:0.8}}>{lang==="en"?"You might also like":"Ajánljuk neked"}</h3>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:12}}>
+                <div style={{background:card,border:`1px solid ${border}`,padding:18,marginBottom:14}}>
+                  <h3 style={{fontSize:13,fontWeight:800,color:tx,margin:"0 0 14px",textTransform:"uppercase",letterSpacing:0.8,paddingBottom:10,borderBottom:`1px solid ${border}`}}>{lang==="en"?"Similar parts":"Hasonló alkatrészek"}</h3>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
                     {recs.map(r=>(
-                      <div key={r.id} onClick={()=>{setSel(r);setImgIdx(0);window.scrollTo({top:0,behavior:"smooth"});}} style={{background:card,border:`1px solid ${border}`,cursor:"pointer",overflow:"hidden",transition:"border-color 0.15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#dc262688"} onMouseLeave={e=>e.currentTarget.style.borderColor=border}>
-                        <div style={{aspectRatio:"4/3",background:isDark?"#1a1a22":"#f0f0f5",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-                          {r.images&&r.images[0]?<img src={r.images[0]} alt={r.partName} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{fontSize:32,opacity:0.15,color:mu}}>&#9881;</div>}
+                      <div key={r.id} onClick={()=>{setSel(r);setImgIdx(0);window.scrollTo({top:0,behavior:"smooth"});}} style={{background:bg,border:`1px solid ${border}`,cursor:"pointer",overflow:"hidden",transition:"border-color 0.15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#dc262688"} onMouseLeave={e=>e.currentTarget.style.borderColor=border}>
+                        <div style={{aspectRatio:"1/1",background:isDark?"#0f0f14":"#f8f8fb",position:"relative",overflow:"hidden"}}>
+                          {r.images&&r.images[0]?<img src={r.images[0]} alt={r.partName} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",fontSize:32,opacity:0.15,color:mu}}>&#9881;</div>}
                         </div>
                         <div style={{padding:10}}>
                           <div style={{fontSize:12,fontWeight:700,color:tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:3}}>{r.partName}</div>
                           {r.car&&<div style={{fontSize:10,color:mu,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:6}}>{r.car}</div>}
-                          <div style={{fontSize:14,fontWeight:900,color:"#dc2626"}}>{r.price?parseInt(r.price||0).toLocaleString("hu")+" Ft":"—"}</div>
+                          <div style={{fontSize:14,fontWeight:900,color:"#dc2626"}}>{r.price?parseInt(r.price||0).toLocaleString("hu")+" Ft":"\u2014"}</div>
                         </div>
                       </div>
                     ))}
